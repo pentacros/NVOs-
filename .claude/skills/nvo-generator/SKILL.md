@@ -1,0 +1,233 @@
+---
+name: nvo-generator
+description: Generate a Leap Finance "NVO" study-abroad ad video (stock footage + animated copy + logos + CTA) in one aspect ratio, then replicate it to the other two. Use when the user asks to make/create/generate an NVO, a study-abroad ad video, or references this project's country/logo/copy workflow.
+---
+
+# NVO Generator
+
+Builds Leap Finance's country-specific study-abroad ad videos ("NVOs"), matching the
+house style reverse-engineered from 9 real campaigns in `../../NVO_STYLE_BIBLE.md`
+(read that file for the full rationale — this skill just operationalizes its decisions).
+
+Rendering backend: [HyperFrames](https://hyperframes.heygen.com) (HTML/CSS/GSAP → MP4).
+Stock footage: Pexels Video API. Footage scoring: Gemini API.
+
+**Read `../../NVO_STYLE_BIBLE.md` before your first run of this skill in a session** —
+it has the full per-beat styling rationale this skill only summarizes.
+
+## Interactive entry point: `npm run create`
+
+Once footage is sourced/scored (Phases 1–2 below), `npm run create` is a guided
+terminal wizard covering Phases 3–6 in one flow — it asks for the campaign name,
+aspect ratio, footage folder, logos, and copy one question at a time, writes
+`videos/<campaign>.json`, shows it for confirmation, then runs `compose.mjs` and
+the render itself (streaming progress, not silent). It detects an existing spec
+and asks whether to edit or start fresh rather than silently overwriting it.
+After each render it extracts start/mid/end frames to a temp folder and prints
+their paths — **if you (the agent) are driving this**, open those frames with
+your image-reading tool and give a short visual confirmation (logo/text placed
+correctly, right aspect ratio, no glitches) before calling the video done; the
+script itself has no way to "look" at its own output. It always prints "Please
+add music after export." as its last line — the pipeline doesn't handle audio
+yet. Prefer this over the manual Phase 3–6 commands below for a normal run; the
+manual phases are still useful for debugging or one-off spec tweaks.
+
+## One-time setup (skip if already done)
+
+1. Copy `.env.example` to `.env` in the project root and fill in `PEXELS_API_KEY` and
+   `GEMINI_API_KEY`.
+2. `cd nvo-automation && npm install` (installs `@google/genai`, `dotenv`).
+3. This machine's default `node` may be too old (HyperFrames needs Node 22+). If
+   `node --version` is under 22, prefix commands with the newer install instead of
+   changing the global version, e.g.:
+   `export PATH="/opt/homebrew/opt/node/bin:$PATH"` (adjust if Homebrew installed
+   node elsewhere — check `brew list --versions node`).
+
+## Architecture (read this before editing any composition file)
+
+- `nvo-template/templates/*.template.html` — source templates with `{{TOKEN}}` placeholders.
+  Never edit `nvo-template/compositions/*.html` directly — those are generated output,
+  overwritten every time `scripts/compose.mjs` runs.
+- `scripts/compose.mjs` fills the templates with a per-video JSON spec (see schema
+  below), computing literal numeric `data-start`/`data-duration` offsets — HyperFrames
+  does **not** support variable-templated timing, only content/color (confirmed via
+  `hyperframes lint` and the installed CLI's own `hyperframes docs data-attributes`).
+- **Background video/product-shot `<video>` elements must be direct children of each
+  aspect-ratio host file's own root** (`canvas-9x16.html`, `canvas-1x1.html`,
+  `canvas-16x9.html`) — HyperFrames never drives media placed inside a sub-composition
+  (anything loaded via `data-composition-src`). `inner.html` (the shared overlay with
+  hook/proof/checklist/CTA text and logo images) is the *only* sub-composition, and it
+  contains **no media** for exactly this reason. `compose.mjs` duplicates the shot list
+  directly into all 3 hosts.
+- Two simultaneously-playing `<video>` elements in the same file need **different**
+  `data-track-index` values — track-index is a decode lane, not a z-order (z-order is
+  CSS `z-index` only). This is why the 1:1/16:9 hosts use 4 distinct track indices
+  (blur shots, blur product-shot, sharp shots, sharp product-shot).
+- Every visible timed element (including `<video>`, contrary to some external docs)
+  needs `class="clip"` — confirmed by this project's own generated `CLAUDE.md`.
+- `data-composition-src` and asset `src` paths are resolved **relative to the project
+  root** (`nvo-template/`), not relative to the referencing file's own folder — always
+  write `compositions/inner.html` and `assets/...`, never `./inner.html` or `../assets/...`.
+- The overlay's own `<html>/<body>` background **must stay `transparent`** — it renders
+  on top of the host's background video layer; an opaque background paints over the
+  footage underneath it (this exact bug was found and fixed once already — don't
+  reintroduce it).
+- 1:1 and 16:9 are the 9:16 master, centered and pillarboxed with a blurred/zoomed
+  duplicate of the same footage on the sides (scale factor 1080/1920 = 0.5625, column
+  width ≈607.5px) — never independently re-laid-out. This is a locked decision
+  (style bible §7 decision #7), not a per-video choice.
+- **No persistent country/brand logo** — this was tried (a corner-anchored flag image)
+  and explicitly reversed after user review against real reference frames (style bible
+  §7 decision #1). Do not reintroduce a persistent logo without a fresh product
+  decision; college/university logos still populate the one proof-beat grid.
+- **Safe zone**: all text/logo/CTA sizing and position must respect Meta's published
+  Instagram Reels safe area for a 1080×1920 canvas — CSS tokens `--nvo-safe-top` (13%),
+  `--nvo-safe-bottom` (18%), `--nvo-safe-right` (15%, the like/comment/share icon
+  column), `--nvo-safe-left` (6%) in `inner.template.html`. An earlier pass sized
+  everything well under this real box and it read as "small/placeholder" — always size
+  new elements to actually fill the safe area, not an arbitrary fraction of the canvas.
+- **Hook+logo-proof merge**: when `proof.mode` is `"logos"`, `compose.mjs` renders the
+  logo grid as a trailing sibling of the hook block (own `data-start`/`data-duration`,
+  starting when the hook's own duration ends) instead of a fully separate later beat —
+  the hook headline/subtitle's `data-duration` is stretched to cover both so the text
+  stays visible while the logos build up underneath, matching how the real campaigns
+  do it (style bible §7 decisions #1/#3). A `bullets`-mode proof is unaffected and
+  still renders as its own separate beat.
+- **Checklist+CTA merge**: when both exist and there's no `productShot` between them,
+  the CTA pill renders centered *inside* the checklist's div (extending its
+  `data-duration`) instead of as a separate beat (style bible §7 decision #4).
+- **CTA and the logo grid are always centered**, unlike the left-aligned hook/checklist
+  body copy — this is a deliberate, user-specified departure from the sampled
+  campaigns (style bible §7 decisions #2/#4), not a per-video choice.
+
+## Phase 0 — Intake
+
+Ask the user (batch into as few turns as possible, following this project's normal
+question style) for:
+
+1. **Country / destination** (e.g. "Germany").
+2. **Aspect ratio(s) wanted first** — default to 9:16 (the master); the other 2 are
+   generated automatically in Phase 6 once the user approves the first.
+3. **College/university logos** (optional, up to 4) — only shown in the proof beat.
+   Ask whether this video needs them at all; many NVOs use a bullet list instead (see
+   beat menu below). No persistent country/brand logo is used (style bible §7
+   decision #1, reversed after user review — don't ask for one).
+4. **Copy for each beat** — do NOT assume a fixed 4-slide structure (the style bible
+   found this varies 2–4 beats per video). Walk through the beat menu:
+   - **Hook** (always required): lead line + hero word (country/degree) + optional
+     fast-fact subtitle.
+   - **Proof** (pick one, or skip): a set of up to 4 logos, OR a list of up to 5
+     USP/stat bullets. Logos render centered, directly under the still-visible hook
+     card (style bible §7 decisions #1–#3) — not their own separate frame.
+   - **Checklist** (optional): the recurring 3-item "Admit Eligibility / Top Jobs After
+     Graduation / Expenses & Earnings" block seen in 3 campaigns, rendered as real
+     bullet points — offer it as a one-click default the user can keep, edit, or skip
+     (style bible §7 decision #10, still open — treat as opt-in, not automatic). When
+     paired with a CTA and no product shot, the CTA renders centered directly beneath
+     it in the same frame (style bible §7 decision #4).
+   - **Product shot** (optional): only if the user has an app screen-recording to
+     supply (not a static photo — style bible found this is always a screen recording,
+     never a device mockup). Get the file path.
+   - **CTA** (always required): lead text + accent phrase. Always renders centered.
+5. **Pill/accent color** if the user wants something other than the default blue
+   (`#1E3FE0`).
+
+## Phase 1 — Source stock footage
+
+```bash
+node scripts/pexels_search.mjs --country "Germany" --ratio 9:16
+```
+
+This downloads candidates into `footage/<country>/` biased toward **calm,
+landmark-led** shots (style bible §7 decision #8 — explicitly NOT hyperlapse/fast
+footage, correcting the original brief). Writes `manifest.json` with Pexels metadata.
+
+## Phase 2 — Score and shortlist footage
+
+```bash
+node scripts/gemini_score.mjs --dir footage/germany
+```
+
+Scores each candidate against the calm/landmark-led house style and proposes trim
+windows. Writes `scored.json`, sorted best-first. Pick 2–5 clips totaling roughly the
+target video length (12–18s is typical per the analyzed campaigns) — trim each to its
+recommended window with `ffmpeg -ss <start> -to <end>` before using it in the spec, or
+pass the full clip and let `compose.mjs`'s padding logic handle the exact duration.
+
+## Phase 3 — Compose
+
+Write a JSON spec (see full schema in `videos/test_germany.json` for a working
+example) to `videos/<name>.json`:
+
+```json
+{
+  "pillColor": "#1E3FE0",
+  "shots": [ { "src": "assets/germany_shot1.mp4", "duration": 3.8 }, ... ],
+  "beats": {
+    "hook": { "duration": 2.5, "lead": "Study in", "hero": "Germany", "subtitle": "..." },
+    "proof": { "mode": "logos", "duration": 3.5, "logos": ["assets/logos/uni1.png", ...] },
+    "checklist": { "duration": 3, "heading": "Get:", "items": ["...", "...", "..."] },
+    "productShot": { "duration": 4, "src": "assets/product.mp4" },
+    "cta": { "duration": 2, "lead": "Check", "accent": "Eligibility" }
+  }
+}
+```
+
+No `logo` field — there's no persistent country/brand logo (style bible §7 decision
+#1, reversed). Omit `proof`, `checklist`, or `productShot` entirely for videos that
+don't use them — `compose.mjs` only renders beats present in the spec (dynamic beat
+model, style bible §7 decision #9). `proof.mode` is `"logos"` or `"bullets"` (with a
+`bullets` array instead of `logos`); a `"logos"` proof right after a hook automatically
+merges into the hook's on-screen block (see Architecture section above).
+
+```bash
+node scripts/compose.mjs --spec videos/<name>.json
+```
+
+This writes `nvo-template/compositions/inner.html` and all 3
+`nvo-template/compositions/canvas-*.html` hosts. Re-run it any time the spec changes —
+never hand-edit the generated composition files.
+
+## Phase 4 — Render the first aspect ratio
+
+```bash
+cd nvo-template
+npx hyperframes render -c compositions/canvas-9x16.html -o ../output/<name>_9x16.mp4
+```
+
+(Prefix with the Node 22+ PATH export from setup if needed. Drop `-q draft --fps 10`
+used during development — render at full quality/fps for anything shown to the user.)
+
+Run `npx hyperframes lint .` first and read the output — real errors (not the
+project's own harmless `media_in_subcomposition` false-positives on `canvas-*.html`,
+which are meant to be rendered directly via `-c` and are proven to work) should be
+fixed before rendering.
+
+## Phase 5 — Review with the user
+
+Show the rendered video. Ask if the copy, timing, footage choice, or styling needs
+changes. Loop back to Phase 3 (edit the spec, recompose) as needed — do not hand-edit
+the generated HTML.
+
+## Phase 6 — Replicate to the other 2 aspect ratios
+
+Once the user approves the first ratio, the other 2 are already composed (Phase 3
+generates all 3 hosts every time) — just render them:
+
+```bash
+npx hyperframes render -c compositions/canvas-1x1.html -o ../output/<name>_1x1.mp4
+npx hyperframes render -c compositions/canvas-16x9.html -o ../output/<name>_16x9.mp4
+```
+
+No further per-ratio design work is needed — the pillarbox-blur treatment is
+mechanical (style bible §7 decision #7).
+
+## Known limitations / open items
+
+- Music/audio is out of scope for v1 (user decision, see style bible history).
+- The "benefits checklist" as an always-offered default (style bible §7 decision #10)
+  is still an open product decision — currently opt-in per video, ask the user each
+  time until they say otherwise.
+- The blur/sharp seam in the pillarbox treatment is a visible hard edge in testing;
+  consider a feathered mask (`mask-image: linear-gradient(...)` on the sharp column's
+  edges) as a polish pass if the user flags it.

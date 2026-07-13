@@ -1,0 +1,18 @@
+{
+  "pillColor": "#1E3FE0",
+  "shots": [
+    { "src": "assets/placeholder.mp4", "duration": 3 },
+    { "src": "assets/placeholder.mp4", "duration": 3 }
+  ],
+  "beats": {
+    "hook": { "duration": 2.5, "lead": "Study in", "hero": "Germany", "subtitle": "where BMW, Bosch & Siemens hire from" },
+    "proof": { "mode": "bullets", "duration": 4, "bullets": [
+      "Engineering capital of Europe",
+      "18-month job-search visa after MS",
+      "200+ English-taught Masters",
+      "World-ranked public universities"
+    ] },
+    "checklist": { "duration": 3, "heading": "Get:", "items": ["Admit Eligibility", "Top Jobs After Graduation", "Expenses & Earnings"] },
+    "cta": { "duration": 2, "lead": "Check", "accent": "Eligibility" }
+  }
+}

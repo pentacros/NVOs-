@@ -1,0 +1,8 @@
+.env
+node_modules/
+footage/*
+!footage/.gitkeep
+output/*
+!output/.gitkeep
+.DS_Store
+.claude/scheduled_tasks.lock

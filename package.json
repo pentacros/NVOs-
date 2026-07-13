@@ -1,0 +1,14 @@
+{
+  "name": "nvo-automation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "create": "node scripts/create.mjs",
+    "fetch-footage": "node scripts/pexels_search.mjs",
+    "score-footage": "node scripts/gemini_score.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "dotenv": "^16.4.5"
+  }
+}

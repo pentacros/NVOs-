@@ -1,0 +1,57 @@
+{
+  "pillColor": "#1E3FE0",
+  "shots": [
+    {
+      "src": "assets/germany/shot1_reichstag.mp4",
+      "duration": 4
+    },
+    {
+      "src": "assets/germany/shot2_tvtower.mp4",
+      "duration": 2
+    },
+    {
+      "src": "assets/germany/shot3_cathedral.mp4",
+      "duration": 4
+    },
+    {
+      "src": "assets/germany/shot4_victorycolumn.mp4",
+      "duration": 3
+    },
+    {
+      "src": "assets/germany/shot5_zwinger.mp4",
+      "duration": 2
+    }
+  ],
+  "beats": {
+    "hook": {
+      "duration": 3.5,
+      "lead": "Study in",
+      "hero": "Germany",
+      "subtitle": "where BMW, Volkswagen & Porsche hire from"
+    },
+    "proof": {
+      "mode": "logos",
+      "duration": 4.5,
+      "logos": [
+        "assets/logos/bugatti.jpg",
+        "assets/logos/bmw.jpg",
+        "assets/logos/vw.png",
+        "assets/logos/porsche.png"
+      ]
+    },
+    "checklist": {
+      "heading": "Get:",
+      "items": [
+        "Admit Eligibility",
+        "Top Jobs After Graduation",
+        "Expenses & Earnings"
+      ],
+      "duration": 4
+    },
+    "cta": {
+      "duration": 3,
+      "lead": "Check",
+      "accent": "Eligibility"
+    }
+  }
+}
