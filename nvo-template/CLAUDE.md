@@ -1,5 +1,16 @@
 # HyperFrames Composition Project
 
+> **NVO Generator project note:** this file is generic `hyperframes init`
+> boilerplate — most of it (skills routing, generic commands) doesn't apply to
+> this specific pipeline. In particular, **this project never uses `npm run
+> dev` (the live preview server), `npm run render`, or `npm run publish`.** The
+> actual workflow is always: `node scripts/compose.mjs --spec videos/<name>.json`
+> from the project root, then `npx hyperframes lint .` and
+> `npx hyperframes render -c compositions/canvas-<ratio>.html -o ../output/...`
+> from inside `nvo-template/` — see `../.claude/skills/nvo-generator/SKILL.md`
+> for the real, project-specific workflow. Don't suggest starting a dev server
+> for anything in this repo.
+
 ## Skills — USE THESE FIRST
 
 **Always invoke the relevant skill before writing or modifying compositions.** Skills encode framework-specific patterns (e.g., `window.__timelines` registration, `data-*` attribute semantics, shader-compatible CSS rules) that are NOT in generic web docs. Skipping them produces broken compositions.
