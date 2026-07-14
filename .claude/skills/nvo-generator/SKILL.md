@@ -15,22 +15,35 @@ Stock footage: Pexels Video API. Footage scoring: Gemini API.
 **Read `../../NVO_STYLE_BIBLE.md` before your first run of this skill in a session** —
 it has the full per-beat styling rationale this skill only summarizes.
 
-## Interactive entry point: `npm run create`
+## Default flow: ask in chat (this is what firing this skill means)
 
-Once footage is sourced/scored (Phases 1–2 below), `npm run create` is a guided
-terminal wizard covering Phases 3–6 in one flow — it asks for the campaign name,
-aspect ratio, footage folder, logos, and copy one question at a time, writes
-`videos/<campaign>.json`, shows it for confirmation, then runs `compose.mjs` and
-the render itself (streaming progress, not silent). It detects an existing spec
-and asks whether to edit or start fresh rather than silently overwriting it.
-After each render it extracts start/mid/end frames to a temp folder and prints
-their paths — **if you (the agent) are driving this**, open those frames with
-your image-reading tool and give a short visual confirmation (logo/text placed
-correctly, right aspect ratio, no glitches) before calling the video done; the
-script itself has no way to "look" at its own output. It always prints "Please
-add music after export." as its last line — the pipeline doesn't handle audio
-yet. Prefer this over the manual Phase 3–6 commands below for a normal run; the
-manual phases are still useful for debugging or one-off spec tweaks.
+When a user invokes this skill in a Claude Code session (`/nvo-generator`, or
+just asking to make/create an NVO), **the default is to run Phase 0 yourself,
+conversationally, right here in the chat** — ask the intake questions one at a
+time (per user feedback: they explicitly want the guided flow to happen in the
+conversation, not by being sent to a separate terminal tool), then run
+`compose.mjs`, lint, and the render yourself via Bash, and show/confirm the
+result in chat (extract frames, view them with your image-reading tool, report
+what you see) exactly like Phases 0–6 below describe. Don't default to telling
+the user to go run something themselves unless they ask for the standalone
+option below.
+
+## Standalone alternative: `npm run create`
+
+For a human running this *without* an agent driving it (or a teammate without
+Claude Code), `npm run create` is a terminal wizard covering the same Phase
+0/3–6 intake in one flow — campaign name, aspect ratio, footage folder, logos,
+copy, one question at a time, writes `videos/<campaign>.json`, shows it for
+confirmation, then runs `compose.mjs` and the render (streaming progress, not
+silent). It detects an existing spec and asks whether to edit or start fresh
+rather than silently overwriting it. After each render it extracts start/mid/end
+frames to a temp folder and prints their paths, but — being a plain Node script —
+it has no way to actually look at them; if an agent happens to be the one
+running it, that agent should still open the frames with its image-reading tool
+and confirm before declaring the video done, same as the chat-native flow. It
+always prints "Please add music after export." as its last line regardless of
+outcome — the pipeline doesn't handle audio yet. Prefer the chat-native flow
+above when you (the agent) are the one driving this.
 
 ## One-time setup (skip if already done)
 
