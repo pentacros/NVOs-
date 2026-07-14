@@ -115,35 +115,39 @@ above when you (the agent) are the one driving this.
 
 ## Phase 0 — Intake
 
-Ask the user (batch into as few turns as possible, following this project's normal
-question style) for:
+**One question per message.** Ask a single question, wait for the user's reply,
+then ask the next — do not batch multiple questions into one message (this was
+tried and explicitly rejected by the user: batching several fields into one
+turn is the wrong UX here, even though it's the "normal" style for other work
+in this project). This matches how `npm run create` already prompts, field by
+field. Walk through, in order:
 
 1. **Country / destination** (e.g. "Germany").
-2. **Aspect ratio(s) wanted first** — default to 9:16 (the master); the other 2 are
+2. **Aspect ratio wanted first** — default to 9:16 (the master); the other 2 are
    generated automatically in Phase 6 once the user approves the first.
-3. **College/university logos** (optional, up to 4) — only shown in the proof beat.
-   Ask whether this video needs them at all; many NVOs use a bullet list instead (see
-   beat menu below). No persistent country/brand logo is used (style bible §7
-   decision #1, reversed after user review — don't ask for one).
-4. **Copy for each beat** — do NOT assume a fixed 4-slide structure (the style bible
-   found this varies 2–4 beats per video). Walk through the beat menu:
-   - **Hook** (always required): lead line + hero word (country/degree) + optional
-     fast-fact subtitle.
-   - **Proof** (pick one, or skip): a set of up to 4 logos, OR a list of up to 5
-     USP/stat bullets. Logos render centered, directly under the still-visible hook
-     card (style bible §7 decisions #1–#3) — not their own separate frame.
-   - **Checklist** (optional): the recurring 3-item "Admit Eligibility / Top Jobs After
-     Graduation / Expenses & Earnings" block seen in 3 campaigns, rendered as real
-     bullet points — offer it as a one-click default the user can keep, edit, or skip
-     (style bible §7 decision #10, still open — treat as opt-in, not automatic). When
-     paired with a CTA and no product shot, the CTA renders centered directly beneath
-     it in the same frame (style bible §7 decision #4).
-   - **Product shot** (optional): only if the user has an app screen-recording to
-     supply (not a static photo — style bible found this is always a screen recording,
-     never a device mockup). Get the file path.
-   - **CTA** (always required): lead text + accent phrase. Always renders centered.
-5. **Pill/accent color** if the user wants something other than the default blue
-   (`#1E3FE0`).
+3. **Proof beat choice** — up to 4 college/university logos, a bullet list of up
+   to 5 USP/stats, or skip this beat entirely. No persistent country/brand logo
+   is ever used (style bible §7 decision #1, reversed after user review — don't
+   ask for one). If logos: ask for the file(s) as their own follow-up question.
+   Logos render centered, directly under the still-visible hook card (style
+   bible §7 decisions #1–#3), not their own separate frame.
+4. **Hook lead line** (e.g. "Study in").
+5. **Hook hero word** (the country/degree name, e.g. "Germany").
+6. **Hook fast-fact subtitle** (optional — ask if they want one, blank to skip).
+7. **Checklist opt-in** — the recurring 3-item "Admit Eligibility / Top Jobs
+   After Graduation / Expenses & Earnings" block, rendered as real bullet
+   points (style bible §7 decision #10, still open — treat as opt-in, not
+   automatic default). If yes, ask separately whether to keep the default
+   wording or customize it. When paired with a CTA and no product shot, the
+   CTA renders centered directly beneath it in the same frame (style bible §7
+   decision #4).
+8. **Product shot opt-in** — only if they have an app screen-recording (not a
+   static photo — style bible found this is always a screen recording, never a
+   device mockup). If yes, ask for the file path as its own follow-up.
+9. **CTA lead text** (e.g. "Check").
+10. **CTA accent phrase** (e.g. "Eligibility"). Always renders centered.
+11. **Pill/accent color**, only if they want something other than the default
+    blue (`#1E3FE0`) — otherwise skip this question and just use the default.
 
 ## Phase 1 — Source stock footage
 
