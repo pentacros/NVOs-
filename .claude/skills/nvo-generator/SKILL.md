@@ -74,45 +74,57 @@ above when you (the agent) are the one driving this.
   assets/compositions folder — always scope by campaign slug (the spec's own
   filename, e.g. `videos/germany.json` → slug `germany`).
 - **Getting a logo (or any asset) from the user does not mean asking them to
-  place a file inside this project's folder structure.** A user can paste an
-  image directly into the chat — you can *see* it via vision, but there is no
-  tool that hands you that exact image's bytes from the conversation itself.
-  On macOS there IS a working extraction path around this, confirmed by
-  testing: run
-  ```bash
-  osascript -e 'try
-    set png_data to the clipboard as «class PNGf»
-    set fp to open for access (POSIX file "/tmp/clip.png") with write permission
-    set eof fp to 0
-    write png_data to fp
-    close access fp
-    return "success"
-  on error errMsg
-    return "failed: " & errMsg
-  end try'
-  ```
-  right after they paste or copy an image — this reads the actual OS clipboard
-  (not the chat's own paste handling), which usually still holds the image.
-  **Always Read the extracted file yourself afterward to visually confirm it's
-  really the intended image before using it** — the first attempt in testing
-  came back as a generic file-icon placeholder (stale clipboard state), and
-  only a retry a moment later grabbed the real image; don't trust an
-  extraction blindly. **This only ever works for ONE image at a time** — the
-  OS clipboard is a single slot, not a queue, so if the user selects/pastes
-  several logos together (found in practice: 4 university logos pasted at
-  once), this can only ever retrieve the single most recent one. For more
-  than one logo, either have them copy each one individually and confirm one
-  at a time ("copied Warwick" → grab → "copied Aberdeen" → grab → ...), or —
-  much faster if they're willing — ask whether all of them are already saved
-  as separate files somewhere (Desktop/Downloads/a folder) so you can just
-  read/copy that whole batch directly instead of looping through the
-  clipboard N times. If it fails or grabs the wrong thing, fall back to
-  asking where the file already lives on their machine (Desktop, Downloads,
-  anywhere) or having them drop it in the project's `inbox/` folder
-  (gitignored scratch space, exactly for this) — either way, **you** copy it
-  into `nvo-template/assets/<campaign>/` yourself and use that path in the
-  spec. Never tell the user to navigate into `nvo-template/assets/...`
-  themselves.
+  place a file inside this project's folder structure.** Never tell the user
+  to navigate into `nvo-template/assets/...` themselves — you always fetch or
+  copy the file in yourself. Three methods, in order of preference:
+
+  1. **Named institution/company → fetch the real logo yourself, no user
+     action needed at all.** Confirmed working end to end (4 UK university
+     logos, byte-for-byte matching what the user showed): `WebSearch`/
+     `WebFetch` the institution's Wikipedia page, read the infobox logo image
+     URL (pattern: `upload.wikimedia.org/wikipedia/en/thumb/.../<Name>_logo.svg/`
+     — bump the `250px-` prefix to `500px-` or higher for a sharper download),
+     then `curl -sL "<url>" -o nvo-template/assets/<campaign>/<name>.png`. This
+     is almost always the RIGHT default for well-known universities/companies
+     — try it before asking the user for anything. **Always `Read` the
+     downloaded file yourself to visually confirm it's the right logo before
+     using it in a spec** — don't assume a URL guess was correct.
+  2. **Clipboard extraction (macOS), for a logo that isn't a clean web match**
+     (a custom/internal logo, or nothing good turns up online). Confirmed
+     working by testing:
+     ```bash
+     osascript -e 'try
+       set png_data to the clipboard as «class PNGf»
+       set fp to open for access (POSIX file "/tmp/clip.png") with write permission
+       set eof fp to 0
+       write png_data to fp
+       close access fp
+       return "success"
+     on error errMsg
+       return "failed: " & errMsg
+     end try'
+     ```
+     right after the user pastes or copies an image — this reads the actual OS
+     clipboard (not the chat's own paste handling), which usually still holds
+     it. **Always Read the extracted file afterward to visually confirm it's
+     really the intended image** — the first attempt in testing came back as a
+     generic file-icon placeholder (stale clipboard state), and only a retry a
+     moment later grabbed the real image; don't trust an extraction blindly.
+     **This only ever works for ONE image at a time** — the OS clipboard is a
+     single slot, not a queue, so if the user selects/pastes several logos
+     together (found in practice: 4 university logos pasted at once), this can
+     only ever retrieve the single most recent one. For more than one logo via
+     this method, have them copy each one individually and confirm one at a
+     time ("copied Warwick" → grab → "copied Aberdeen" → grab → ...) — or
+     prefer method 1 above for named entities, which has no such limit.
+  3. **Ask where the file already lives** (Desktop, Downloads, anywhere) or
+     have them drop it in the project's `inbox/` folder (gitignored scratch
+     space, exactly for this) — the fallback when neither of the above works,
+     e.g. a one-off custom logo with no web presence and no longer on the
+     clipboard.
+
+  Whichever method works, **you** copy/save the result into
+  `nvo-template/assets/<campaign>/` and use that path in the spec.
 - `nvo-template/templates/*.template.html` — source templates with `{{TOKEN}}` placeholders.
   Never edit `nvo-template/compositions/<campaign>/*.html` directly — those are
   generated output, overwritten every time `scripts/compose.mjs` runs for that campaign.

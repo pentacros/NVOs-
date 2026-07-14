@@ -32,12 +32,13 @@ Every campaign is fully self-contained under `nvo-template/assets/<campaign>/`
 (shots and logos together) and `nvo-template/compositions/<campaign>/`
 (generated output) — nothing is ever shared across campaigns, so a second
 campaign can never mix up or overwrite an earlier one's assets or render.
-Got a logo to add? Just paste or copy the image (Mac) and tell the agent —
-it can grab it straight off your clipboard (see SKILL.md's Architecture
-section for the exact command). Falls back to `inbox/` (gitignored scratch
-space) or telling it where the file already is (Desktop, Downloads, wherever)
-if that doesn't work — you never need to place it inside `nvo-template/`
-yourself either way.
+Need a university/company logo? Just name it — the agent fetches the real
+official logo itself (via Wikipedia) with no file handling from you at all.
+For a custom logo with no web presence, paste or copy the image (Mac) and it
+can grab it straight off your clipboard instead, or falls back to `inbox/`
+(gitignored scratch space) or wherever the file already is (Desktop,
+Downloads). Either way, you never need to place it inside `nvo-template/`
+yourself — see SKILL.md's Architecture section for the exact mechanics.
 
 ## Using it without an agent
 

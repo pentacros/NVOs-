@@ -10,10 +10,10 @@
   "beats": {
     "hook": { "duration": 2.5, "lead": "Study in", "hero": "UK", "subtitle": "1-year Master's" },
     "proof": { "mode": "logos", "duration": 3.5, "logos": [
-      "assets/uk/st_andrews.png",
-      "assets/uk/kentucky.png",
-      "assets/uk/rb_college.jpeg",
-      "assets/uk/british_university_college.png"
+      "assets/uk/warwick.png",
+      "assets/uk/aberdeen.png",
+      "assets/uk/reading.png",
+      "assets/uk/leeds.png"
     ] },
     "checklist": { "duration": 3, "heading": "Get:", "items": ["Admit Eligibility", "Top Jobs After Graduation", "Expenses & Earnings"] },
     "cta": { "duration": 2, "lead": "Apply", "accent": "Now" }
