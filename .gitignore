@@ -4,5 +4,7 @@ footage/*
 !footage/.gitkeep
 output/*
 !output/.gitkeep
+inbox/*
+!inbox/.gitkeep
 .DS_Store
 .claude/scheduled_tasks.lock

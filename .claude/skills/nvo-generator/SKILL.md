@@ -58,9 +58,33 @@ above when you (the agent) are the one driving this.
 
 ## Architecture (read this before editing any composition file)
 
+- **Every campaign is fully self-contained in its own folder — nothing about a
+  campaign is ever shared or global.** `nvo-template/assets/<campaign>/` holds
+  BOTH that campaign's trimmed shot clips AND its logos side by side (e.g.
+  `nvo-template/assets/germany/{shot1_reichstag.mp4, bmw.jpg, porsche.png}`),
+  and `nvo-template/compositions/<campaign>/` holds that campaign's generated
+  output. This was NOT the original design — logos used to live in one shared
+  `nvo-template/assets/logos/` pool and every campaign composed into one shared
+  `nvo-template/compositions/` directory. In practice this caused two real
+  bugs: (1) a second campaign's logos ended up mixed in the same picker
+  list/folder as an earlier campaign's, with no way to tell which belonged to
+  which; (2) composing a second campaign silently overwrote the first
+  campaign's already-rendered composition files with no warning, because they
+  shared one output path. Never reintroduce a shared, cross-campaign
+  assets/compositions folder — always scope by campaign slug (the spec's own
+  filename, e.g. `videos/germany.json` → slug `germany`).
+- **Getting a logo (or any asset) from the user does not mean asking them to
+  place a file inside this project's folder structure.** A user can paste/share
+  an image in chat, but there is currently no way to extract that pasted
+  image's actual bytes into a file — you can only *see* it via your image
+  vision. So: ask them where the file already lives on their machine (Desktop,
+  Downloads, anywhere), or ask them to drop it in the project's `inbox/` folder
+  (gitignored scratch space, exactly for this) — then **you** copy it into
+  `nvo-template/assets/<campaign>/` yourself and use that path in the spec.
+  Never tell the user to navigate into `nvo-template/assets/...` themselves.
 - `nvo-template/templates/*.template.html` — source templates with `{{TOKEN}}` placeholders.
-  Never edit `nvo-template/compositions/*.html` directly — those are generated output,
-  overwritten every time `scripts/compose.mjs` runs.
+  Never edit `nvo-template/compositions/<campaign>/*.html` directly — those are
+  generated output, overwritten every time `scripts/compose.mjs` runs for that campaign.
 - `scripts/compose.mjs` fills the templates with a per-video JSON spec (see schema
   below), computing literal numeric `data-start`/`data-duration` offsets — HyperFrames
   does **not** support variable-templated timing, only content/color (confirmed via
@@ -80,7 +104,8 @@ above when you (the agent) are the one driving this.
   needs `class="clip"` — confirmed by this project's own generated `CLAUDE.md`.
 - `data-composition-src` and asset `src` paths are resolved **relative to the project
   root** (`nvo-template/`), not relative to the referencing file's own folder — always
-  write `compositions/inner.html` and `assets/...`, never `./inner.html` or `../assets/...`.
+  write `compositions/<campaign>/inner.html` and `assets/<campaign>/...`, never a
+  path relative to the referencing file's own folder.
 - The overlay's own `<html>/<body>` background **must stay `transparent`** — it renders
   on top of the host's background video layer; an opaque background paints over the
   footage underneath it (this exact bug was found and fixed once already — don't
@@ -128,9 +153,12 @@ field. Walk through, in order:
 3. **Proof beat choice** — up to 4 college/university logos, a bullet list of up
    to 5 USP/stats, or skip this beat entirely. No persistent country/brand logo
    is ever used (style bible §7 decision #1, reversed after user review — don't
-   ask for one). If logos: ask for the file(s) as their own follow-up question.
-   Logos render centered, directly under the still-visible hook card (style
-   bible §7 decisions #1–#3), not their own separate frame.
+   ask for one). If logos: ask, one at a time, where each file already lives
+   (Desktop, Downloads, the project's `inbox/` folder, wherever) — never ask
+   the user to place it inside `nvo-template/assets/...` themselves, copy it
+   there yourself (see Architecture note above). Logos render centered,
+   directly under the still-visible hook card (style bible §7 decisions
+   #1–#3), not their own separate frame.
 4. **Hook lead line** (e.g. "Study in").
 5. **Hook hero word** (the country/degree name, e.g. "Germany").
 6. **Hook fast-fact subtitle** (optional — ask if they want one, blank to skip).
@@ -173,43 +201,50 @@ pass the full clip and let `compose.mjs`'s padding logic handle the exact durati
 
 ## Phase 3 — Compose
 
-Write a JSON spec (see full schema in `videos/test_germany.json` for a working
-example) to `videos/<name>.json`:
+Write a JSON spec (see full schema in `videos/germany.json` for a working example,
+with real trimmed shots and real logos — `videos/test_germany.json` is a minimal
+placeholder-only version) to `videos/<name>.json`, where `<name>` becomes the
+campaign slug that scopes everything below:
 
 ```json
 {
   "pillColor": "#1E3FE0",
-  "shots": [ { "src": "assets/germany_shot1.mp4", "duration": 3.8 }, ... ],
+  "shots": [ { "src": "assets/germany/shot1.mp4", "duration": 3.8 }, ... ],
   "beats": {
     "hook": { "duration": 2.5, "lead": "Study in", "hero": "Germany", "subtitle": "..." },
-    "proof": { "mode": "logos", "duration": 3.5, "logos": ["assets/logos/uni1.png", ...] },
+    "proof": { "mode": "logos", "duration": 3.5, "logos": ["assets/germany/uni1.png", ...] },
     "checklist": { "duration": 3, "heading": "Get:", "items": ["...", "...", "..."] },
-    "productShot": { "duration": 4, "src": "assets/product.mp4" },
+    "productShot": { "duration": 4, "src": "assets/germany/product.mp4" },
     "cta": { "duration": 2, "lead": "Check", "accent": "Eligibility" }
   }
 }
 ```
 
-No `logo` field — there's no persistent country/brand logo (style bible §7 decision
-#1, reversed). Omit `proof`, `checklist`, or `productShot` entirely for videos that
-don't use them — `compose.mjs` only renders beats present in the spec (dynamic beat
-model, style bible §7 decision #9). `proof.mode` is `"logos"` or `"bullets"` (with a
-`bullets` array instead of `logos`); a `"logos"` proof right after a hook automatically
-merges into the hook's on-screen block (see Architecture section above).
+Every `src`/`logos` path lives under that same `assets/<name>/` folder — shots and
+logos side by side, never a shared cross-campaign folder (see Architecture note
+above). No `logo` field — there's no persistent country/brand logo (style bible §7
+decision #1, reversed). Omit `proof`, `checklist`, or `productShot` entirely for
+videos that don't use them — `compose.mjs` only renders beats present in the spec
+(dynamic beat model, style bible §7 decision #9). `proof.mode` is `"logos"` or
+`"bullets"` (with a `bullets` array instead of `logos`); a `"logos"` proof right
+after a hook automatically merges into the hook's on-screen block (see Architecture
+section above).
 
 ```bash
 node scripts/compose.mjs --spec videos/<name>.json
 ```
 
-This writes `nvo-template/compositions/inner.html` and all 3
-`nvo-template/compositions/canvas-*.html` hosts. Re-run it any time the spec changes —
-never hand-edit the generated composition files.
+This writes `nvo-template/compositions/<name>/inner.html` and all 3
+`nvo-template/compositions/<name>/canvas-*.html` hosts — the campaign slug is taken
+from the spec's own filename, so this never touches another campaign's already-
+composed output. Re-run it any time the spec changes — never hand-edit the
+generated composition files.
 
 ## Phase 4 — Render the first aspect ratio
 
 ```bash
 cd nvo-template
-npx hyperframes render -c compositions/canvas-9x16.html -o ../output/<name>_9x16.mp4
+npx hyperframes render -c compositions/<name>/canvas-9x16.html -o ../output/<name>_9x16.mp4
 ```
 
 (Prefix with the Node 22+ PATH export from setup if needed. Drop `-q draft --fps 10`
@@ -232,8 +267,8 @@ Once the user approves the first ratio, the other 2 are already composed (Phase 
 generates all 3 hosts every time) — just render them:
 
 ```bash
-npx hyperframes render -c compositions/canvas-1x1.html -o ../output/<name>_1x1.mp4
-npx hyperframes render -c compositions/canvas-16x9.html -o ../output/<name>_16x9.mp4
+npx hyperframes render -c compositions/<name>/canvas-1x1.html -o ../output/<name>_1x1.mp4
+npx hyperframes render -c compositions/<name>/canvas-16x9.html -o ../output/<name>_16x9.mp4
 ```
 
 No further per-ratio design work is needed — the pillarbox-blur treatment is

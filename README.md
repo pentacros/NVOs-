@@ -25,7 +25,16 @@ Open this folder in Claude Code — the `nvo-generator` skill
 (`.claude/skills/nvo-generator/SKILL.md`) is auto-discovered, no install step
 needed. Trigger it any time with `/nvo-generator`, or just ask naturally
 ("make an NVO for Ireland"). It'll walk you through country, footage, logos, and
-copy conversationally, then compose, render, and visually confirm the result.
+copy conversationally, one question at a time, then compose, render, and
+visually confirm the result.
+
+Every campaign is fully self-contained under `nvo-template/assets/<campaign>/`
+(shots and logos together) and `nvo-template/compositions/<campaign>/`
+(generated output) — nothing is ever shared across campaigns, so a second
+campaign can never mix up or overwrite an earlier one's assets or render.
+Got a logo file to add? Drop it in `inbox/` (gitignored scratch space) or just
+tell the agent where it already is on your machine (Desktop, Downloads,
+wherever) — you never need to place it inside `nvo-template/` yourself.
 
 ## Using it without an agent
 

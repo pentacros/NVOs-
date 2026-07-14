@@ -209,31 +209,41 @@ async function collectProof(slug, existingSpec) {
     return { mode: "bullets", duration, bullets };
   }
 
-  const logosDir = "nvo-template/assets/logos";
-  const available = existsSync(logosDir)
-    ? readdirSync(logosDir).filter((f) => /\.(png|jpe?g|svg)$/i.test(f) && f !== "placeholder.png")
-    : [];
+  // Scoped to THIS campaign's own asset folder (nvo-template/assets/<slug>/,
+  // same place its shots live) — never a shared cross-campaign logos/ pool.
+  // An earlier version scanned one global nvo-template/assets/logos/ folder,
+  // which mixed every campaign's logos together (found in practice: a second
+  // campaign's university logos ended up alongside an earlier campaign's
+  // employer logos in the same picker list).
+  const campaignDir = `nvo-template/assets/${slug}`;
+  mkdirSync(campaignDir, { recursive: true });
+  const available = readdirSync(campaignDir).filter((f) => /\.(png|jpe?g|svg)$/i.test(f));
   let logos = [];
   if (available.length) {
-    console.log(`Logos found in ${logosDir}:`);
+    console.log(`Logos already in ${campaignDir}/:`);
     available.forEach((f, i) => console.log(`  ${i + 1}. ${f}`));
-    const raw = await ask("Comma-separated numbers to use (up to 4)");
+    const raw = await ask("Comma-separated numbers to use (up to 4, blank to add new ones instead)");
     const idxs = raw
       .split(",")
       .map((s) => parseInt(s.trim(), 10) - 1)
       .filter((i) => i >= 0 && i < available.length);
-    logos = idxs.slice(0, 4).map((i) => `assets/logos/${available[i]}`);
+    logos = idxs.slice(0, 4).map((i) => `assets/${slug}/${available[i]}`);
   }
-  if (!logos.length) {
-    console.log("No logos selected from assets/logos/ — enter file paths directly instead.");
+  if (logos.length < 4) {
+    console.log(
+      "Add logo file(s) — give the path to wherever the file already is on disk (Desktop, Downloads, anywhere); it'll be copied into this campaign's own asset folder automatically. Blank to stop."
+    );
     while (logos.length < 4) {
-      const p = await ask(`Logo file path ${logos.length + 1} (blank to stop)`);
+      const p = await ask(`Logo source path ${logos.length + 1}`);
       if (!p) break;
       if (!existsSync(p)) {
         console.log(`Not found: ${p}`);
         continue;
       }
-      logos.push(p);
+      const filename = path.basename(p);
+      const dest = path.join(campaignDir, filename);
+      if (path.resolve(p) !== path.resolve(dest)) copyFileSync(p, dest);
+      logos.push(`assets/${slug}/${filename}`);
     }
   }
   return { mode: "logos", duration, logos };
@@ -372,9 +382,11 @@ async function main() {
     const outRelFromTemplate = `../output/${slug}_${ratioToken}.mp4`;
     const outAbs = path.join(projectRoot, "output", `${slug}_${ratioToken}.mp4`);
     console.log(`\n=== Rendering ${label} ===`);
-    await run("npx", ["hyperframes", "render", "-c", `compositions/canvas-${ratioToken}.html`, "-o", outRelFromTemplate], {
-      cwd: nvoTemplateDir,
-    });
+    await run(
+      "npx",
+      ["hyperframes", "render", "-c", `compositions/${slug}/canvas-${ratioToken}.html`, "-o", outRelFromTemplate],
+      { cwd: nvoTemplateDir }
+    );
     console.log(`\nOutput: output/${slug}_${ratioToken}.mp4`);
 
     // Mechanical half of the visual check: extract start/mid/end frames and

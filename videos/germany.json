@@ -33,10 +33,10 @@
       "mode": "logos",
       "duration": 4.5,
       "logos": [
-        "assets/logos/bugatti.jpg",
-        "assets/logos/bmw.jpg",
-        "assets/logos/vw.png",
-        "assets/logos/porsche.png"
+        "assets/germany/bugatti.jpg",
+        "assets/germany/bmw.jpg",
+        "assets/germany/vw.png",
+        "assets/germany/porsche.png"
       ]
     },
     "checklist": {

@@ -16,14 +16,22 @@
 // script; only text/logo/CTA overlay content lives in the shared inner.html
 // sub-composition.
 //
-// Writes: nvo-template/compositions/inner.html, canvas-9x16.html, canvas-1x1.html,
-// canvas-16x9.html (all root-relative asset paths — compositions are served with
-// the project root as their base URL, per `hyperframes lint`).
+// Writes: nvo-template/compositions/<campaign>/{inner.html, canvas-9x16.html,
+// canvas-1x1.html, canvas-16x9.html} (all root-relative asset paths —
+// compositions are served with the project root as their base URL, per
+// `hyperframes lint`). The output directory is PER CAMPAIGN (derived from the
+// spec's filename, e.g. videos/germany.json -> compositions/germany/) — an
+// earlier version wrote everything to one shared nvo-template/compositions/
+// directory, so composing a second campaign silently overwrote the first
+// campaign's rendered output (found in practice: composing a UK spec clobbered
+// Germany's already-composed files with no warning). Never share this
+// directory across campaigns again.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import path from "node:path";
 
 const TEMPLATES_DIR = "nvo-template/templates";
-const OUT_DIR = "nvo-template/compositions";
+const COMPOSITIONS_ROOT = "nvo-template/compositions";
 
 // Column geometry for the 1:1/16:9 pillarbox-blur hosts (NVO_STYLE_BIBLE.md §1.5):
 // native 1080x1920 scaled to fit a 1080px-tall canvas -> scale 1080/1920 = 0.5625,
@@ -253,6 +261,14 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   const spec = JSON.parse(readFileSync(args.spec, "utf-8"));
 
+  // Campaign slug comes from the spec's own filename (videos/germany.json ->
+  // "germany") — this is what scopes both the composition output dir below and
+  // (by convention, not enforced here) the campaign's asset folder
+  // nvo-template/assets/<slug>/ that its shots/logos already live in.
+  const slug = path.basename(args.spec, ".json");
+  const OUT_DIR = `${COMPOSITIONS_ROOT}/${slug}`;
+  mkdirSync(OUT_DIR, { recursive: true });
+
   // See buildHook/buildChecklist docblocks — these two merges are what make the
   // logo grid feel like part of the hook card, and the CTA feel like part of the
   // checklist card, instead of each popping up as an unrelated new frame.
@@ -304,7 +320,16 @@ function main() {
   const hostSpecs = ["canvas-9x16", "canvas-1x1", "canvas-16x9"];
   for (const name of hostSpecs) {
     const hostTemplate = readFileSync(`${TEMPLATES_DIR}/${name}.template.html`, "utf-8");
-    let hostOut = hostTemplate.replace(/{{TOTAL_DURATION}}/g, totalDuration);
+    let hostOut = hostTemplate
+      .replace(/{{TOTAL_DURATION}}/g, totalDuration)
+      // In-HTML reference, NOT a filesystem path: data-composition-src is
+      // resolved relative to nvo-template/ itself (HyperFrames' own project
+      // root), so this must NOT include the "nvo-template/" prefix that
+      // OUT_DIR needs for the actual writeFileSync calls below (compose.mjs
+      // runs from the outer repo root, one level above nvo-template/) — found
+      // by rendering and getting "the file does not exist" for a path that
+      // very much existed, just doubly-prefixed.
+      .replace("{{COMPOSITION_DIR}}", `compositions/${slug}`);
     hostOut = hostOut
       .replace("{{SHOT_VIDEO_TAGS_SHARP}}", buildShots(shots, { idPrefix: "shot", trackIndex: 0 }))
       .replace("{{PRODUCT_SHOT_TAG_SHARP}}", sharpProductShotTag);

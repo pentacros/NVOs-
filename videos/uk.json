@@ -1,0 +1,21 @@
+{
+  "pillColor": "#1E3FE0",
+  "shots": [
+    { "src": "assets/uk/shot1_bigben.mp4", "duration": 4 },
+    { "src": "assets/uk/shot2_towerbridge.mp4", "duration": 4 },
+    { "src": "assets/uk/shot3_britishmuseum.mp4", "duration": 3 },
+    { "src": "assets/uk/shot4_lloyds.mp4", "duration": 2.9 },
+    { "src": "assets/uk/shot5_aerial.mp4", "duration": 3 }
+  ],
+  "beats": {
+    "hook": { "duration": 2.5, "lead": "Study in", "hero": "UK", "subtitle": "1-year Master's" },
+    "proof": { "mode": "logos", "duration": 3.5, "logos": [
+      "assets/uk/st_andrews.png",
+      "assets/uk/kentucky.png",
+      "assets/uk/rb_college.jpeg",
+      "assets/uk/british_university_college.png"
+    ] },
+    "checklist": { "duration": 3, "heading": "Get:", "items": ["Admit Eligibility", "Top Jobs After Graduation", "Expenses & Earnings"] },
+    "cta": { "duration": 2, "lead": "Apply", "accent": "Now" }
+  }
+}
