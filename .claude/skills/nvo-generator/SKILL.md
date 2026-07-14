@@ -74,14 +74,36 @@ above when you (the agent) are the one driving this.
   assets/compositions folder — always scope by campaign slug (the spec's own
   filename, e.g. `videos/germany.json` → slug `germany`).
 - **Getting a logo (or any asset) from the user does not mean asking them to
-  place a file inside this project's folder structure.** A user can paste/share
-  an image in chat, but there is currently no way to extract that pasted
-  image's actual bytes into a file — you can only *see* it via your image
-  vision. So: ask them where the file already lives on their machine (Desktop,
-  Downloads, anywhere), or ask them to drop it in the project's `inbox/` folder
-  (gitignored scratch space, exactly for this) — then **you** copy it into
-  `nvo-template/assets/<campaign>/` yourself and use that path in the spec.
-  Never tell the user to navigate into `nvo-template/assets/...` themselves.
+  place a file inside this project's folder structure.** A user can paste an
+  image directly into the chat — you can *see* it via vision, but there is no
+  tool that hands you that exact image's bytes from the conversation itself.
+  On macOS there IS a working extraction path around this, confirmed by
+  testing: run
+  ```bash
+  osascript -e 'try
+    set png_data to the clipboard as «class PNGf»
+    set fp to open for access (POSIX file "/tmp/clip.png") with write permission
+    set eof fp to 0
+    write png_data to fp
+    close access fp
+    return "success"
+  on error errMsg
+    return "failed: " & errMsg
+  end try'
+  ```
+  right after they paste or copy an image — this reads the actual OS clipboard
+  (not the chat's own paste handling), which usually still holds the image.
+  **Always Read the extracted file yourself afterward to visually confirm it's
+  really the intended image before using it** — the first attempt in testing
+  came back as a generic file-icon placeholder (stale clipboard state), and
+  only a retry a moment later grabbed the real image; don't trust an
+  extraction blindly. If it fails or grabs the wrong thing, fall back to
+  asking where the file already lives on their machine (Desktop, Downloads,
+  anywhere) or having them drop it in the project's `inbox/` folder
+  (gitignored scratch space, exactly for this) — either way, **you** copy it
+  into `nvo-template/assets/<campaign>/` yourself and use that path in the
+  spec. Never tell the user to navigate into `nvo-template/assets/...`
+  themselves.
 - `nvo-template/templates/*.template.html` — source templates with `{{TOKEN}}` placeholders.
   Never edit `nvo-template/compositions/<campaign>/*.html` directly — those are
   generated output, overwritten every time `scripts/compose.mjs` runs for that campaign.
@@ -153,12 +175,14 @@ field. Walk through, in order:
 3. **Proof beat choice** — up to 4 college/university logos, a bullet list of up
    to 5 USP/stats, or skip this beat entirely. No persistent country/brand logo
    is ever used (style bible §7 decision #1, reversed after user review — don't
-   ask for one). If logos: ask, one at a time, where each file already lives
-   (Desktop, Downloads, the project's `inbox/` folder, wherever) — never ask
-   the user to place it inside `nvo-template/assets/...` themselves, copy it
-   there yourself (see Architecture note above). Logos render centered,
-   directly under the still-visible hook card (style bible §7 decisions
-   #1–#3), not their own separate frame.
+   ask for one). If logos: the easiest path is to have them just paste or copy
+   each image and grab it off the clipboard yourself (see Architecture note
+   above for the exact command and the "always verify what you grabbed" caveat)
+   — fall back to asking where the file already lives (Desktop, Downloads, the
+   project's `inbox/` folder, wherever) if that fails. Never ask the user to
+   place it inside `nvo-template/assets/...` themselves, copy it there
+   yourself. Logos render centered, directly under the still-visible hook card
+   (style bible §7 decisions #1–#3), not their own separate frame.
 4. **Hook lead line** (e.g. "Study in").
 5. **Hook hero word** (the country/degree name, e.g. "Germany").
 6. **Hook fast-fact subtitle** (optional — ask if they want one, blank to skip).
