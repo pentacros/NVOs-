@@ -97,7 +97,16 @@ above when you (the agent) are the one driving this.
   really the intended image before using it** — the first attempt in testing
   came back as a generic file-icon placeholder (stale clipboard state), and
   only a retry a moment later grabbed the real image; don't trust an
-  extraction blindly. If it fails or grabs the wrong thing, fall back to
+  extraction blindly. **This only ever works for ONE image at a time** — the
+  OS clipboard is a single slot, not a queue, so if the user selects/pastes
+  several logos together (found in practice: 4 university logos pasted at
+  once), this can only ever retrieve the single most recent one. For more
+  than one logo, either have them copy each one individually and confirm one
+  at a time ("copied Warwick" → grab → "copied Aberdeen" → grab → ...), or —
+  much faster if they're willing — ask whether all of them are already saved
+  as separate files somewhere (Desktop/Downloads/a folder) so you can just
+  read/copy that whole batch directly instead of looping through the
+  clipboard N times. If it fails or grabs the wrong thing, fall back to
   asking where the file already lives on their machine (Desktop, Downloads,
   anywhere) or having them drop it in the project's `inbox/` folder
   (gitignored scratch space, exactly for this) — either way, **you** copy it
