@@ -1,0 +1,32 @@
+{
+  "key": "dubai_a",
+  "name": "Curiosity Hook & Proof Stack",
+  "description": "Curiosity-hook tag → 3 checkmark benefit pills → 4 university logos → all-caps CTA pill.",
+  "previewPath": "reference/dubai_a_9x16_findings.md",
+  "previewVideoPath": "reference/dubai nvo 20th may - DUBAI NVO VISUALS CORRECTED 9 BY 16.mp4",
+  "sourceDurationSeconds": 14.43,
+  "accent": "#ffd54a",
+  "pill": "#1e3fe0",
+  "secondary": "#39ff14",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": true,
+    "proof": { "mode": "bullets", "count": 3, "icon": "check", "itemLabel": "benefit" },
+    "secondaryProof": { "mode": "logos", "count": 4, "logoType": "university" },
+    "checklist": { "supported": false },
+    "productShot": "unsupported",
+    "cta": { "style": "allCaps" }
+  },
+  "defaultHeroLine": "Study in Dubai",
+  "defaultSupportLine": "A premium edge for your next move",
+  "defaultProofLine": "High-growth careers in a global city",
+  "defaultCtaLine": "Talk to a study abroad expert now",
+  "questions": [
+    { "key": "tagLine", "prompt": "Curiosity-hook tag line under the headline (e.g. \"And Most Don't Even Know It\")", "default": "And Most Don't Even Know It" },
+    { "key": "benefit1", "prompt": "Benefit pill 1 of 3 (checkmark style, e.g. \"Up to 20 Hours/Week Part-Time\")", "default": "" },
+    { "key": "benefit2", "prompt": "Benefit pill 2 of 3", "default": "" },
+    { "key": "benefit3", "prompt": "Benefit pill 3 of 3", "default": "" },
+    { "key": "logoCount", "prompt": "How many university logos (up to 4) for this campaign's proof grid?", "type": "number", "default": 4 }
+  ]
+}

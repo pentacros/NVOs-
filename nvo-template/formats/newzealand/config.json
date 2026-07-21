@@ -1,0 +1,29 @@
+{
+  "key": "newzealand",
+  "name": "Full Demo Walkthrough",
+  "description": "Calm hero + offer badge → a REQUIRED full-screen app-UI sequence (~40% of runtime, the longest product-shot share of any format) → a CTA pill that fades in AND out (unique to this format). No logo grid — university crests only appear inside the product demo.",
+  "previewPath": "reference/newzealand_9x16_findings.md",
+  "previewVideoPath": "reference/NZ NVO.mp4",
+  "sourceDurationSeconds": 12.83,
+  "accent": "#ffd54a",
+  "pill": "#2f7d4f",
+  "secondary": "#ffb703",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": false,
+    "proof": { "mode": "none" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": false },
+    "productShot": "required",
+    "cta": { "style": "fadeInOut" }
+  },
+  "defaultHeroLine": "Studying Masters in",
+  "defaultSupportLine": "Shortlist your best-fit programs",
+  "defaultProofLine": "A structured shortlist makes the journey clearer",
+  "defaultCtaLine": "Get your shortlist now",
+  "questions": [
+    { "key": "offerBadge", "prompt": "Offer wordmark badge text (e.g. \"NEW ZEALAND Masters\")", "default": "" },
+    { "key": "productShotPath", "prompt": "Path to this campaign's own app screen-recording (REQUIRED for this format — never a reference clip)", "default": "" }
+  ]
+}

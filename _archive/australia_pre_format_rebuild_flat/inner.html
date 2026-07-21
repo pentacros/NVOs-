@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <!--
+    NVO text/logo/CTA OVERLAY TEMPLATE — always at native 1080x1920 (9:16), mounted
+    as a sub-composition on top of each host's own background video layer.
+
+    IMPORTANT: this file contains NO <video>/<audio> elements. HyperFrames only
+    drives media (seeks/decodes) that is a DIRECT child of the top-level rendered
+    root — media inside a sub-composition renders blank (confirmed via
+    `hyperframes lint`: media_in_subcomposition). So all background footage and
+    the product-shot video live directly in each canvas-*.template.html host file
+    instead, duplicated 3x by compose.mjs from the same shot list. This file only
+    ever contains text, logo <img>, and CTA markup — safe inside a sub-comp.
+
+    This file is NOT rendered directly. scripts/compose.mjs fills every {{TOKEN}}
+    with concrete values/numbers (HyperFrames' variable system only supports
+    content strings/colors, not data-start/data-duration timing — those must be
+    literal numbers per `hyperframes docs data-attributes`) and writes the result
+    to compositions/inner.html for the CLI to lint/render.
+
+    The 3 host files mount this composed output via data-composition-src, framed
+    natively for 9:16, and centered inside a blurred-fill pillarbox for 1:1/16:9
+    (NVO_STYLE_BIBLE.md §1.5, §7 decision #2).
+
+    Beats are dynamic (NVO_STYLE_BIBLE.md §2, §7 decision #4): compose.mjs omits
+    the markup for any beat the user didn't supply content for.
+  -->
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      /* transparent, NOT #000 — this composition is mounted as an overlay ON TOP
+         of each host's own background video; an opaque background here would
+         paint over the footage underneath (found by rendering a real test video
+         and seeing solid black despite the video layer working correctly). */
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+      body { font-family: "Montserrat", "Inter", sans-serif; color: #fff; }
+
+      /* ---- design tokens ----
+         Safe-zone numbers are Meta's own published Reels/Stories safe area for a
+         1080x1920 canvas: keep clear of the top ~13% (camera/status area), bottom
+         ~18% (caption/username/audio-title/progress bar), and right ~15% (like/
+         comment/share/save icon column) — nothing here accounted for the right/
+         bottom reel-UI zones before, which is why content crowded the left third
+         instead of filling the real usable box. Text/logo scale below is
+         benchmarked against reference/*_findings.md frame measurements (e.g.
+         germany_a: hero word ~1.3x lead line; singapore_b: hero word up to ~55%
+         of frame width) and pushed further per direct user feedback that even a
+         first size pass still read too small. --nvo-text-shadow is applied to any
+         text sitting directly on footage (not on a solid pill/card) for
+         legibility — moderate, not a heavy black block. */
+      :root {
+        --nvo-scrim: linear-gradient(to bottom, rgba(0,0,0,.55) 0%, rgba(0,0,0,.25) 40%, rgba(0,0,0,0) 65%);
+        --nvo-safe-left: 6%;
+        --nvo-safe-right: 15%;
+        --nvo-safe-top: 13%;
+        --nvo-safe-bottom: 18%;
+        --nvo-pill-blue: #1E3FE0;
+        --nvo-highlight-lime: #c6ff3d;
+        --nvo-text-shadow: 0 2px 6px rgba(0,0,0,.55), 0 1px 18px rgba(0,0,0,.35);
+      }
+
+      /* background video lives in the host file now — see file header note */
+      #scrim { position: absolute; inset: 0; z-index: 1; background: var(--nvo-scrim); pointer-events: none; }
+
+      /* Fills the real safe box (left..right-icon-column), not an arbitrary 85%. */
+      .safe-col {
+        position: absolute; left: var(--nvo-safe-left); top: var(--nvo-safe-top);
+        width: calc(100% - var(--nvo-safe-left) - var(--nvo-safe-right)); z-index: 5;
+      }
+
+      /* ---- Beat: Hook ---- */
+      #hook { top: var(--nvo-safe-top); }
+      #hook .line { font-size: 84px; font-weight: 700; line-height: 1.15; text-shadow: var(--nvo-text-shadow); }
+      /* Country/hero word uses a vivid, unmissable accent color — matching the same
+         gold already used for the CTA's accent word — rather than plain white; user
+         feedback was specifically about COLOR vividness, not an outline/shadow trick. */
+      #hook .hero-word {
+        font-family: "Playfair Display", "Georgia", serif; font-style: italic; font-weight: 700; font-size: 154px;
+        color: #ffd54a; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+      }
+      #hook .subtitle-badge {
+        display: inline-block; margin-top: 26px; padding: 20px 36px; border-radius: 999px;
+        background: var(--nvo-pill-blue); font-style: italic; font-weight: 600; font-size: 40px;
+        box-shadow: 0 4px 14px rgba(0,0,0,.35);
+      }
+
+      /* Logo grid — shared by the standalone proof-logos beat AND the merged-into-hook
+         case (see compose.mjs: when proof.mode is "logos", the grid appears directly
+         below the hook card as a trailing sibling instead of a disconnected new beat,
+         matching the real campaigns where employer/university logos build up under
+         the SAME headline rather than replacing it — style bible germany_a Act 1,
+         singapore_b Slide 2). Centered on the true frame center (50%), not left-
+         aligned with the body copy above it and not re-centered within a carved-out
+         safe box (an earlier pass centered it within a padding-right reservation,
+         which visibly drifted it left of true center — user feedback: center to the
+         frame, not to the pill/text above). .logo-grid's own width (68%) is chosen so
+         its right edge still lands at ~84%, just inside the ~85% reel-icon safe
+         boundary, while remaining genuinely centered at 50%. */
+      .logo-grid-wrap {
+        position: absolute; left: 0; top: 38%; width: 100%;
+        display: flex; justify-content: center; z-index: 5;
+      }
+      .logo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; width: 74%; }
+      .logo-card {
+        background: #fff; border-radius: 22px; padding: 38px 42px;
+        display: flex; align-items: center; justify-content: center; opacity: 0; transform: scale(0.85);
+        box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      }
+      .logo-card img { max-width: 100%; max-height: 175px; object-fit: contain; }
+
+      /* ---- Beat: Proof — bullet/USP stack ---- */
+      #proof-bullets { top: 38%; }
+      #proof-bullets .bullet {
+        display: flex; align-items: center; gap: 16px; background: #fff; color: #0b1a3a;
+        font-weight: 700; font-size: 48px; border-radius: 999px; padding: 22px 34px; margin-bottom: 18px;
+        width: fit-content; opacity: 0; transform: translateX(-16px); box-shadow: 0 6px 20px rgba(0,0,0,.2);
+      }
+      #proof-bullets .bullet .dot { width: 24px; height: 24px; border-radius: 50%; background: #ff7a1a; flex: none; }
+
+      /* ---- Beat: Benefits checklist (+ CTA merged in, see compose.mjs) ---- */
+      #checklist { top: 38%; }
+      #checklist .heading { font-size: 56px; font-weight: 700; margin-bottom: 20px; text-shadow: var(--nvo-text-shadow); }
+      #checklist .item {
+        display: flex; align-items: center; gap: 18px; font-weight: 700; font-size: 48px;
+        color: var(--nvo-highlight-lime); margin-bottom: 20px; opacity: 0; transform: translateX(-16px);
+        text-shadow: var(--nvo-text-shadow);
+      }
+      /* A real sized badge, not a unicode "✓" glyph — text-glyph font-size doesn't
+         reliably scale the visible ink (a lot of a checkmark character's em-box is
+         whitespace), so a previous size bump produced no visible change. An explicit
+         width/height circle with an SVG check inside is unambiguous and easy to
+         resize further. Filled solid (not just white-on-transparent) per feedback
+         that it should be a vivid, clearly visible color, not just a shape. */
+      #checklist .item .bullet-mark {
+        width: 58px; height: 58px; border-radius: 50%; background: var(--nvo-highlight-lime);
+        display: inline-flex; align-items: center; justify-content: center; flex: none;
+        box-shadow: 0 3px 10px rgba(0,0,0,.35);
+      }
+      #checklist .item .bullet-mark svg { width: 32px; height: 32px; }
+
+      /* Beat: Product shot has no overlay markup — it's a direct-child <video> in
+         each host file (see note above); the overlay's hook/proof/checklist/cta
+         beats simply don't occupy that time window, so nothing else needs to hide. */
+
+      /* ---- Beat: CTA ----
+         Always centered on the true frame center (50%), unlike the left-aligned body
+         copy above it — per direct user feedback. Renders as its own #cta-wrap div
+         either way: standalone (own beat) or as a trailing sibling of #checklist when
+         merged (see compose.mjs) — always left:0/width:100%/justify-content:center,
+         never inset to the safe-col box, since centering within that asymmetric
+         (6% left / 15% right) box drifts the pill left of true center (the same bug
+         fixed for .logo-grid-wrap above). */
+      .cta-pill {
+        display: inline-block; background: var(--nvo-pill-blue); border-radius: 999px;
+        padding: 30px 54px; font-weight: 800; font-style: italic; font-size: 54px; opacity: 0; transform: scale(0.9);
+        box-shadow: 0 6px 20px rgba(0,0,0,.35);
+      }
+      .cta-pill .accent { color: #ffd54a; }
+      #cta-wrap { position: absolute; left: 0; top: 55%; width: 100%; display: flex; justify-content: center; z-index: 5; }
+
+    </style>
+  </head>
+  <body>
+    <div id="inner-root" data-composition-id="inner" data-start="0" data-width="1080" data-height="1920">
+
+      <div id="scrim" class="clip" data-start="0" data-duration="15" data-track-index="0"></div>
+
+      
+      <div id="hook" class="safe-col clip" data-start="0" data-duration="8" data-track-index="1">
+        <div class="line">Study in</div>
+        <div class="line hero-word">Australia</div>
+        <div class="subtitle-badge" id="hook-subtitle">Admit in 14 Days</div>
+      </div>
+      <div id="hook-logos" class="clip" data-start="3.5" data-duration="4.5" data-track-index="2">
+        <div class="logo-grid-wrap">
+        <div class="logo-grid">
+            <div class="logo-card" id="hlogo1"><img src="assets/australia/melbourne.png" /></div>
+            <div class="logo-card" id="hlogo2"><img src="assets/australia/sydney.png" /></div>
+            <div class="logo-card" id="hlogo3"><img src="assets/australia/anu.png" /></div>
+            <div class="logo-card" id="hlogo4"><img src="assets/australia/monash.png" /></div>
+        </div>
+      </div>
+      </div>
+      
+      
+      <div id="checklist" class="safe-col clip" data-start="8" data-duration="7" data-track-index="1">
+        <div class="heading">Get:</div>
+        <div class="item" id="check1"><span class="bullet-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#0b1a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"></polyline></svg></span>Admit Eligibility</div>
+        <div class="item" id="check2"><span class="bullet-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#0b1a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"></polyline></svg></span>Top Jobs After Graduation</div>
+        <div class="item" id="check3"><span class="bullet-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#0b1a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"></polyline></svg></span>Expenses &amp; Earnings</div>
+      </div>
+      <div id="cta-wrap" class="clip" data-start="12" data-duration="3" data-track-index="3">
+        <div class="cta-pill" id="cta">Follow us <span class="accent">Follow</span></div>
+      </div>
+      
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from("#hook .line", { opacity: 0, duration: 0.4, stagger: 0.25 }, 0.1);
+      tl.to("#hlogo1", { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 3.5);
+      tl.to("#hlogo2", { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 3.75);
+      tl.to("#hlogo3", { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 4);
+      tl.to("#hlogo4", { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 4.25);
+      tl.fromTo("#hook-subtitle", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3 }, 1.1);
+      tl.to("#check1", { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 8);
+      tl.to("#check2", { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 8.6);
+      tl.to("#check3", { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 9.2);
+      tl.fromTo("#cta", { opacity: 0, scale: 0.85, filter: "blur(6px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.35, ease: "back.out(1.7)" }, 12);
+
+      // extend timeline to the full render length regardless of last authored tween
+      tl.set({}, {}, 15);
+
+      window.__timelines["inner"] = tl;
+    </script>
+  </body>
+</html>

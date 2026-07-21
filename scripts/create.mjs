@@ -1,21 +1,8 @@
 #!/usr/bin/env node
-// Interactive entry point for generating one NVO — the only thing a user should
-// need to run. Wraps scripts/compose.mjs and `hyperframes render` so nobody has
-// to touch either directly. Scope is deliberately just "spec intake -> compose ->
-// render -> visual sanity check" — footage sourcing/scoring (pexels_search.mjs /
-// gemini_score.mjs) and environment setup (.env, node version) are out of scope;
-// this assumes those are already done, per the project's own SKILL.md phases.
-//
-// Usage:
-//   npm run create
-//
-// Every field asked below maps 1:1 to what scripts/compose.mjs actually reads
-// (spec.pillColor, spec.shots[], spec.beats.{hook,proof,checklist,productShot,cta})
-// — checked against videos/germany.json and compose.mjs before writing this, not
-// guessed. There is no persistent country-logo field (style bible §7 decision #1,
-// reversed) and no Gemini step for copy/script text — gemini_score.mjs only ever
-// scores footage clips, never copy, so that conditional step from the original
-// ask doesn't apply to this pipeline as it stands.
+// Interactive entry point for generating one NVO. Each format owns its own
+// content shape (logo count, bullet/badge count, checklist, product-shot
+// requirement) via nvo-template/formats/<key>/config.json's contentShape —
+// this script asks only the questions that shape actually calls for.
 
 import { createInterface } from "node:readline";
 import { spawn, execSync } from "node:child_process";
@@ -29,18 +16,10 @@ import {
 } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { getFormatCatalog, previewTextForFormat } from "./formatCatalog.mjs";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: false });
 
-// NOT built on rl.question() — its internal callback races against input that
-// arrives faster than each question is asked (e.g. a fully-buffered piped file,
-// or a human pasting several lines at once): any 'line' event that fires before
-// the NEXT question() call has registered its one-shot listener is silently
-// dropped, and the process then exits with an unresolved dangling promise and
-// no error (found by testing this end to end with piped answers — the wizard
-// stopped after exactly one question with no error message). A manual queue
-// captures every line the moment it arrives regardless of timing, so nothing
-// asked later than it's produced ever gets lost.
 const lineQueue = [];
 const waiters = [];
 rl.on("line", (line) => {
@@ -96,27 +75,23 @@ function run(cmd, args, opts = {}) {
 }
 
 function probeDuration(file) {
-  const out = execSync(
-    `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`
-  )
-    .toString()
-    .trim();
+  const out = execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`).toString().trim();
   return Math.round(parseFloat(out) * 100) / 100;
 }
 
-// Source of truth for supported ratios is the templates dir (always present in
-// git), not compositions/ (regenerated output that may not exist yet on a fresh
-// checkout that's never run compose) — per the ask to check what actually exists
-// rather than guessing a hardcoded list.
 function discoverRatioTokens() {
   return readdirSync("nvo-template/templates")
     .map((f) => f.match(/^canvas-(.+)\.template\.html$/))
     .filter(Boolean)
-    .map((m) => m[1]); // e.g. "9x16", "1x1", "16x9"
+    .map((m) => m[1]);
 }
 
 function ratioLabel(token) {
   return token.replace("x", ":");
+}
+
+function normalizeSlug(rawName) {
+  return rawName.toLowerCase().replace(/\s+/g, "_");
 }
 
 async function collectShots(slug, existingSpec) {
@@ -135,18 +110,13 @@ async function collectShots(slug, existingSpec) {
     defaultFolder = rawFootageDir;
   }
 
-  let folder = await ask(
-    "Footage folder (containing the trimmed clips to use as shots)",
-    defaultFolder ?? undefined
-  );
+  let folder = await ask("Footage folder for THIS campaign (containing the trimmed clips to use as shots — never a reference/ folder)", defaultFolder ?? undefined);
   while (!folder || !existsSync(folder)) {
     console.log(`Path not found: "${folder}"`);
     folder = await ask("Try again");
   }
 
-  let mp4s = readdirSync(folder)
-    .filter((f) => f.toLowerCase().endsWith(".mp4"))
-    .sort();
+  let mp4s = readdirSync(folder).filter((f) => f.toLowerCase().endsWith(".mp4")).sort();
   if (!mp4s.length) {
     console.log(`No .mp4 files found in ${folder}.`);
     process.exit(1);
@@ -158,10 +128,6 @@ async function collectShots(slug, existingSpec) {
     mp4s = chosen.filter((f) => mp4s.includes(f));
   }
 
-  // Spec shot paths must resolve relative to nvo-template/ (compose.mjs
-  // architecture note) — normalize everything into nvo-template/assets/<slug>/
-  // first so the written src paths are always valid, whether the clips came
-  // from there already or from a sibling footage/<slug>/ raw-candidates folder.
   if (path.resolve(folder) !== path.resolve(canonicalDir)) {
     mkdirSync(canonicalDir, { recursive: true });
     for (const f of mp4s) copyFileSync(path.join(folder, f), path.join(canonicalDir, f));
@@ -183,87 +149,162 @@ async function collectShots(slug, existingSpec) {
   return shots;
 }
 
-async function collectProof(slug, existingSpec) {
-  if (existingSpec?.beats?.proof) {
-    console.log("\nExisting proof beat:", JSON.stringify(existingSpec.beats.proof, null, 2));
-    if (await askYesNo("Keep this proof beat as-is?", true)) return existingSpec.beats.proof;
+// Asks for up to `count` image file paths for this campaign's own logos (never
+// from reference/) and copies each into the campaign's canonical assets dir.
+async function collectLogoPaths(slug, label, count, existingLogos) {
+  if (existingLogos?.length) {
+    console.log(`\nExisting ${label} logos:`);
+    existingLogos.forEach((p, i) => console.log(`  ${i + 1}. ${p}`));
+    if (await askYesNo("Keep these as-is?", true)) return existingLogos;
   }
-
-  const mode = await askChoice(
-    "\nProof beat — partner logos, USP bullets, or skip this beat?",
-    ["logos", "bullets", "skip"],
-    "logos"
-  );
-  if (mode === "skip") return null;
-
-  const duration = await askNumber("Proof beat duration (seconds)", 4.5);
-
-  if (mode === "bullets") {
-    console.log("Enter up to 5 USP/stat bullets, one per line. Blank line to finish.");
-    const bullets = [];
-    while (bullets.length < 5) {
-      const line = await ask(`Bullet ${bullets.length + 1} (blank to finish)`);
-      if (!line) break;
-      bullets.push(line);
+  const canonicalDir = `nvo-template/assets/${slug}`;
+  mkdirSync(canonicalDir, { recursive: true });
+  const logos = [];
+  for (let i = 0; i < count; i++) {
+    let src = await ask(`Path to ${label} logo ${i + 1} of ${count} (blank to stop early)`, "");
+    if (!src) break;
+    while (!existsSync(src)) {
+      console.log(`Not found: "${src}"`);
+      src = await ask("Try again (blank to stop)", "");
+      if (!src) break;
     }
-    return { mode: "bullets", duration, bullets };
+    if (!src) break;
+    const filename = path.basename(src);
+    const destRel = `assets/${slug}/${filename}`;
+    const destAbs = `nvo-template/${destRel}`;
+    if (path.resolve(src) !== path.resolve(destAbs)) copyFileSync(src, destAbs);
+    logos.push(destRel);
+  }
+  return logos;
+}
+
+async function collectTextItems(count, prompt) {
+  const items = [];
+  for (let i = 0; i < count; i++) {
+    const text = await ask(`${prompt} ${i + 1} of ${count}`);
+    if (text) items.push(text);
+  }
+  return items;
+}
+
+// Builds the beats object for one format from its own contentShape — this is
+// the point where each format's clarifying questions genuinely diverge.
+async function collectBeatsForFormat(format, existingSpec, slug, rawName) {
+  const shape = format.contentShape ?? {};
+  const existingBeats = existingSpec?.beats ?? {};
+
+  const hookLead = await ask("Headline lead-in line (e.g. \"Study in\")", existingBeats.hook?.lead ?? format.defaultHeroLine ?? "");
+  const hookHero = await ask("Headline hero word (country/degree name)", existingBeats.hook?.hero ?? rawName);
+  let hookSubtitle = existingBeats.hook?.subtitle ?? "";
+  if (shape.hasIntakeBadge) {
+    hookSubtitle = await ask("Intake badge / tag line under the headline", hookSubtitle || format.defaultSupportLine || "");
+  } else if (await askYesNo("Add an optional subtitle line under the headline?", !!hookSubtitle)) {
+    hookSubtitle = await ask("Subtitle text", hookSubtitle || format.defaultSupportLine || "");
+  } else {
+    hookSubtitle = "";
+  }
+  const hookDuration = await askNumber("Headline duration (seconds)", existingBeats.hook?.duration ?? 3.5);
+  const hook = { duration: hookDuration, lead: hookLead, hero: hookHero, ...(hookSubtitle ? { subtitle: hookSubtitle } : {}) };
+
+  async function collectProofBeat(proofShape, existingBeat, label) {
+    if (!proofShape || proofShape.mode === "none") return null;
+    const count = proofShape.count ?? 4;
+    const duration = await askNumber(`${label} beat duration (seconds)`, existingBeat?.duration ?? Math.max(2.5, count * 0.6));
+    if (proofShape.mode === "logos") {
+      console.log(`\n${label}: up to ${count} ${proofShape.logoType ?? ""} logo(s) — fetch/copy this campaign's OWN logos, never a reference/ file.`);
+      const logos = await collectLogoPaths(slug, proofShape.logoType ?? "proof", count, existingBeat?.logos);
+      return { mode: "logos", duration, logos };
+    }
+    if (proofShape.mode === "bullets") {
+      const bullets = await collectTextItems(count, `${label} bullet`);
+      return { mode: "bullets", duration, bullets: bullets.length ? bullets : (existingBeat?.bullets ?? []) };
+    }
+    if (proofShape.mode === "numberedBadges") {
+      const items = await collectTextItems(count, `${label} numbered badge`);
+      return { mode: "numberedBadges", duration, items: items.length ? items : (existingBeat?.items ?? []) };
+    }
+    if (proofShape.mode === "cumulativePills") {
+      const items = await collectTextItems(count, `${label} pill`);
+      return { mode: "cumulativePills", duration, items: items.length ? items : (existingBeat?.items ?? []) };
+    }
+    return null;
   }
 
-  // Scoped to THIS campaign's own asset folder (nvo-template/assets/<slug>/,
-  // same place its shots live) — never a shared cross-campaign logos/ pool.
-  // An earlier version scanned one global nvo-template/assets/logos/ folder,
-  // which mixed every campaign's logos together (found in practice: a second
-  // campaign's university logos ended up alongside an earlier campaign's
-  // employer logos in the same picker list).
-  const campaignDir = `nvo-template/assets/${slug}`;
-  mkdirSync(campaignDir, { recursive: true });
-  const available = readdirSync(campaignDir).filter((f) => /\.(png|jpe?g|svg)$/i.test(f));
-  let logos = [];
-  if (available.length) {
-    console.log(`Logos already in ${campaignDir}/:`);
-    available.forEach((f, i) => console.log(`  ${i + 1}. ${f}`));
-    const raw = await ask("Comma-separated numbers to use (up to 4, blank to add new ones instead)");
-    const idxs = raw
-      .split(",")
-      .map((s) => parseInt(s.trim(), 10) - 1)
-      .filter((i) => i >= 0 && i < available.length);
-    logos = idxs.slice(0, 4).map((i) => `assets/${slug}/${available[i]}`);
-  }
-  if (logos.length < 4) {
-    console.log(
-      "Add logo file(s) — give the path to wherever the file already is on disk (Desktop, Downloads, anywhere); it'll be copied into this campaign's own asset folder automatically. Blank to stop."
-    );
-    while (logos.length < 4) {
-      const p = await ask(`Logo source path ${logos.length + 1}`);
-      if (!p) break;
-      if (!existsSync(p)) {
-        console.log(`Not found: ${p}`);
-        continue;
+  const proof = await collectProofBeat(shape.proof, existingBeats.proof, "Proof");
+  const secondaryProof = await collectProofBeat(shape.secondaryProof, existingBeats.secondaryProof, "Secondary proof");
+
+  let checklist = null;
+  if (shape.checklist?.supported) {
+    const wantChecklist = shape.checklist.required || (await askYesNo("Include the eligibility checklist beat?", true));
+    if (wantChecklist) {
+      const heading = shape.checklist.defaultHeading
+        ? await ask("Checklist heading", existingBeats.checklist?.heading ?? shape.checklist.defaultHeading)
+        : (existingBeats.checklist?.heading ?? "");
+      let items = existingBeats.checklist?.items;
+      const hasDefaultWording = Array.isArray(shape.checklist.defaultItems) && shape.checklist.defaultItems.length > 0;
+      if (hasDefaultWording && (await askYesNo(`Use the standard checklist wording (${shape.checklist.defaultItems.join(" / ")})?`, true))) {
+        items = shape.checklist.defaultItems;
+      } else {
+        items = await collectTextItems(shape.checklist.count ?? 3, "Checklist item");
       }
-      const filename = path.basename(p);
-      const dest = path.join(campaignDir, filename);
-      if (path.resolve(p) !== path.resolve(dest)) copyFileSync(p, dest);
-      logos.push(`assets/${slug}/${filename}`);
+      const duration = await askNumber("Checklist duration (seconds)", existingBeats.checklist?.duration ?? 4);
+      checklist = { heading, items, duration };
     }
   }
-  return { mode: "logos", duration, logos };
+
+  let productShot = null;
+  if (shape.productShot === "required" || shape.productShot === "optional") {
+    const isRequired = shape.productShot === "required";
+    const wantProductShot = isRequired || (await askYesNo("Include a product-shot / app screen-recording beat?", !!existingBeats.productShot));
+    if (isRequired) console.log("\nThis format requires a product-shot beat (its source format always includes one) — provide THIS campaign's own screen recording, never a reference clip.");
+    if (wantProductShot) {
+      let src = await ask("Product-shot video file path (this campaign's own screen recording)", existingBeats.productShot?.src);
+      while (!src || !existsSync(src)) {
+        console.log(`Not found: "${src}"`);
+        src = await ask("Try again");
+      }
+      const duration = await askNumber("Product-shot duration (seconds)", existingBeats.productShot?.duration ?? 4);
+      productShot = { src, duration };
+    }
+  }
+
+  const ctaLead = await ask("CTA lead text (e.g. \"Check\")", existingBeats.cta?.lead ?? (format.defaultCtaLine ?? "").split(/\s+/)[0] ?? "Get");
+  const ctaAccent = await ask("CTA accent phrase", existingBeats.cta?.accent ?? (format.defaultCtaLine ?? "").replace(/^\S+\s*/, "") ?? "your shortlist now");
+  const ctaDuration = await askNumber("CTA duration (seconds)", existingBeats.cta?.duration ?? 3);
+  const cta = { duration: ctaDuration, lead: ctaLead, accent: ctaAccent };
+
+  return {
+    hook,
+    ...(proof ? { proof } : {}),
+    ...(secondaryProof ? { secondaryProof } : {}),
+    ...(checklist ? { checklist } : {}),
+    ...(productShot ? { productShot } : {}),
+    cta,
+  };
 }
 
 async function main() {
   console.log("=== NVO Generator — create a video ===\n");
 
-  const rawName = await ask("Campaign/market name (e.g. germany)");
-  const slug = rawName.toLowerCase().replace(/\s+/g, "_");
+  const formatCatalog = getFormatCatalog();
+  console.log("Pick a format — each has its own visual style AND its own content shape (logo/bullet counts, checklist, product-shot use):\n");
+  formatCatalog.forEach((f, i) => console.log(`  ${i + 1}. ${f.name} — ${f.description}`));
+  console.log();
+  const defaultFormat = formatCatalog.find((format) => format.key === "genericnvo1") ?? formatCatalog[0];
+  const chosenFormatName = await askChoice("Which format/style should this campaign use?", formatCatalog.map((f) => f.name), defaultFormat.name);
+  const selectedFormat = formatCatalog.find((format) => format.name === chosenFormatName) ?? defaultFormat;
+
+  console.log(`\nGot it — building a "${selectedFormat.name}" style NVO.\n`);
+  const projectRoot = process.cwd();
+  console.log(previewTextForFormat(selectedFormat.key, projectRoot));
+  console.log();
+
+  // Shared questions (every format asks these, in this order)
+  const rawName = await ask("Campaign/country name (e.g. germany)");
+  const slug = normalizeSlug(rawName);
   if (!slug) {
     console.log("A campaign name is required.");
     process.exit(1);
-  }
-  const specPath = `videos/${slug}.json`;
-
-  let existingSpec = null;
-  if (existsSync(specPath)) {
-    const choice = await askChoice(`Spec for "${slug}" already exists — edit it or start fresh?`, ["edit", "fresh"], "edit");
-    if (choice === "edit") existingSpec = JSON.parse(readFileSync(specPath, "utf-8"));
   }
 
   const ratioTokens = discoverRatioTokens();
@@ -276,78 +317,25 @@ async function main() {
   const chosenLabel = await askChoice("Which aspect ratio to render first?", ratioLabels, ratioLabel(preferredDefaultToken));
   const firstRatioToken = ratioTokens[ratioLabels.indexOf(chosenLabel)];
 
+  const specPath = `videos/${slug}__${selectedFormat.key}.json`;
+  let existingSpec = null;
+  if (existsSync(specPath)) {
+    const choice = await askChoice(`Spec for "${slug}" in format "${selectedFormat.key}" already exists — edit it or start fresh?`, ["edit", "fresh"], "edit");
+    if (choice === "edit") existingSpec = JSON.parse(readFileSync(specPath, "utf-8"));
+  }
+
   const shots = await collectShots(slug, existingSpec);
-  const proof = await collectProof(slug, existingSpec);
 
-  console.log("\n--- Hook (required) ---");
-  const hookLead = await ask("Hook lead line (e.g. 'Study in')", existingSpec?.beats?.hook?.lead ?? "Study in");
-  const hookHero = await ask("Hero word — the country/degree name", existingSpec?.beats?.hook?.hero ?? rawName);
-  const hookSubtitle = await ask(
-    "Fast-fact subtitle (optional, blank to skip)",
-    existingSpec?.beats?.hook?.subtitle ?? ""
-  );
-  const hookDuration = await askNumber("Hook duration (seconds)", existingSpec?.beats?.hook?.duration ?? 3.5);
-
-  console.log("\n--- Benefits checklist (optional) ---");
-  const wantChecklist = await askYesNo(
-    "Include the 'Admit Eligibility / Top Jobs After Graduation / Expenses & Earnings' checklist?",
-    !!existingSpec?.beats?.checklist
-  );
-  let checklist = null;
-  if (wantChecklist) {
-    const heading = await ask("Checklist heading", existingSpec?.beats?.checklist?.heading ?? "Get:");
-    const useDefaultItems = await askYesNo(
-      "Use the default 3 items (Admit Eligibility / Top Jobs After Graduation / Expenses & Earnings)?",
-      true
-    );
-    let items;
-    if (useDefaultItems) {
-      items = existingSpec?.beats?.checklist?.items ?? [
-        "Admit Eligibility",
-        "Top Jobs After Graduation",
-        "Expenses & Earnings",
-      ];
-    } else {
-      items = [];
-      for (let i = 0; i < 3; i++) items.push(await ask(`Checklist item ${i + 1}`));
-    }
-    const duration = await askNumber("Checklist duration (seconds)", existingSpec?.beats?.checklist?.duration ?? 4);
-    checklist = { heading, items, duration };
-  }
-
-  console.log("\n--- Product shot (optional) ---");
-  const wantProductShot = await askYesNo(
-    "Include an app screen-recording product shot?",
-    !!existingSpec?.beats?.productShot
-  );
-  let productShot = null;
-  if (wantProductShot) {
-    let src = await ask("Product shot video file path", existingSpec?.beats?.productShot?.src);
-    while (!src || !existsSync(src)) {
-      console.log(`Not found: "${src}"`);
-      src = await ask("Try again");
-    }
-    const duration = await askNumber("Product shot duration (seconds)", existingSpec?.beats?.productShot?.duration ?? 4);
-    productShot = { src, duration };
-  }
-
-  console.log("\n--- CTA (required) ---");
-  const ctaLead = await ask("CTA lead text (e.g. 'Check')", existingSpec?.beats?.cta?.lead ?? "Check");
-  const ctaAccent = await ask("CTA accent phrase (e.g. 'Eligibility')", existingSpec?.beats?.cta?.accent ?? "Eligibility");
-  const ctaDuration = await askNumber("CTA duration (seconds)", existingSpec?.beats?.cta?.duration ?? 3);
-
-  const pillColor = await ask("Pill/accent color (hex)", existingSpec?.pillColor ?? "#1E3FE0");
+  // Format-specific questions — genuinely different per format's contentShape
+  const beats = await collectBeatsForFormat(selectedFormat, existingSpec, slug, rawName);
 
   const spec = {
-    pillColor,
+    version: 3,
+    format: selectedFormat.key,
+    formatName: selectedFormat.name,
+    pillColor: selectedFormat.pill ?? "#1E3FE0",
     shots,
-    beats: {
-      hook: { duration: hookDuration, lead: hookLead, hero: hookHero, ...(hookSubtitle ? { subtitle: hookSubtitle } : {}) },
-      ...(proof ? { proof } : {}),
-      ...(checklist ? { checklist } : {}),
-      ...(productShot ? { productShot } : {}),
-      cta: { duration: ctaDuration, lead: ctaLead, accent: ctaAccent },
-    },
+    beats,
   };
 
   console.log(`\n--- Spec to write to ${specPath} ---`);
@@ -359,15 +347,9 @@ async function main() {
   writeFileSync(specPath, JSON.stringify(spec, null, 2) + "\n");
   console.log(`Wrote ${specPath}`);
 
-  const projectRoot = process.cwd();
   const nvoTemplateDir = path.join(projectRoot, "nvo-template");
-
   await run("node", ["scripts/compose.mjs", "--spec", specPath], { cwd: projectRoot });
 
-  // Lint is informational here, not a gate — this project's own canvas-*.html
-  // hosts trigger a known, documented false-positive (media_in_subcomposition)
-  // every time (see SKILL.md), so a non-zero lint exit code does not mean the
-  // render will actually fail.
   try {
     await run("npx", ["hyperframes", "lint", "."], { cwd: nvoTemplateDir });
   } catch (err) {
@@ -375,27 +357,19 @@ async function main() {
   }
 
   let ratioToken = firstRatioToken;
+  const formatKey = selectedFormat.key;
   const rendered = [];
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const label = ratioLabel(ratioToken);
-    const outRelFromTemplate = `../output/${slug}_${ratioToken}.mp4`;
-    const outAbs = path.join(projectRoot, "output", `${slug}_${ratioToken}.mp4`);
+    const outRelFromTemplate = `../output/${slug}_${formatKey}_${ratioToken}.mp4`;
+    const outAbs = path.join(projectRoot, "output", `${slug}_${formatKey}_${ratioToken}.mp4`);
     console.log(`\n=== Rendering ${label} ===`);
-    await run(
-      "npx",
-      ["hyperframes", "render", "-c", `compositions/${slug}/canvas-${ratioToken}.html`, "-o", outRelFromTemplate],
-      { cwd: nvoTemplateDir }
-    );
-    console.log(`\nOutput: output/${slug}_${ratioToken}.mp4`);
+    await run("npx", ["hyperframes", "render", "-c", `compositions/${slug}/${formatKey}/canvas-${ratioToken}.html`, "-o", outRelFromTemplate], { cwd: nvoTemplateDir });
+    console.log(`\nOutput: output/${slug}_${formatKey}_${ratioToken}.mp4`);
 
-    // Mechanical half of the visual check: extract start/mid/end frames and
-    // print exactly where they are. Actually LOOKING at them requires a vision-
-    // capable agent (e.g. Claude Code driving this script) using its Read tool
-    // on the printed paths — a plain Node script cannot judge its own frames.
     try {
       const duration = probeDuration(outAbs);
-      const reviewDir = path.join(os.tmpdir(), "nvo-review", `${slug}-${ratioToken}`);
+      const reviewDir = path.join(os.tmpdir(), "nvo-review", `${slug}-${formatKey}-${ratioToken}`);
       mkdirSync(reviewDir, { recursive: true });
       const points = [
         ["start", Math.max(0.1, duration * 0.05)],
@@ -408,9 +382,6 @@ async function main() {
         execSync(`ffmpeg -y -loglevel error -ss ${t.toFixed(2)} -i "${outAbs}" -frames:v 1 "${fp}"`);
         console.log(`  ${label2}: ${fp}`);
       }
-      console.log(
-        "(If an agent session is driving this, it should open each frame above with its image-reading tool now and confirm logo/text placement, aspect ratio, and no rendering glitches before calling this done.)"
-      );
     } catch (err) {
       console.log(`Could not extract review frames: ${err.message}`);
     }
@@ -432,7 +403,5 @@ main()
   })
   .finally(() => {
     rl.close();
-    // Standing reminder — the pipeline doesn't handle music yet, so this prints
-    // every time this script runs, success or failure, per explicit instruction.
     console.log("\nPlease add music after export.");
   });

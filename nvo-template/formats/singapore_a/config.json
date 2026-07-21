@@ -1,0 +1,32 @@
+{
+  "key": "singapore_a",
+  "name": "Cumulative Benefit Stack",
+  "description": "Plain headline → 5 benefit pills that stack and stay on screen together (first orange, rest blue) → hard swap to CTA. No logos anywhere.",
+  "previewPath": "reference/singapore_a_9x16_findings.md",
+  "previewVideoPath": "reference/singapore nvo 1 june - singapore under 60 secs.mp4",
+  "sourceDurationSeconds": 13.85,
+  "accent": "#ff6a00",
+  "pill": "#1e3fff",
+  "secondary": "#ffd54a",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": false,
+    "proof": { "mode": "cumulativePills", "count": 5, "itemLabel": "benefit" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": false },
+    "productShot": "unsupported",
+    "cta": { "style": "slideWipe" }
+  },
+  "defaultHeroLine": "1-year Masters",
+  "defaultSupportLine": "The path to your next opportunity",
+  "defaultProofLine": "Fast-moving career benefits in a global city",
+  "defaultCtaLine": "Get your free shortlist now",
+  "questions": [
+    { "key": "benefit1", "prompt": "Benefit pill 1 of 5 — this one renders in the accent (orange) color, e.g. \"Asia's finance capital\"", "default": "" },
+    { "key": "benefit2", "prompt": "Benefit pill 2 of 5", "default": "" },
+    { "key": "benefit3", "prompt": "Benefit pill 3 of 5", "default": "" },
+    { "key": "benefit4", "prompt": "Benefit pill 4 of 5", "default": "" },
+    { "key": "benefit5", "prompt": "Benefit pill 5 of 5", "default": "" }
+  ]
+}

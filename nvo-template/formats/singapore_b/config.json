@@ -1,0 +1,30 @@
+{
+  "key": "singapore_b",
+  "name": "Toggle Checklist & Logo Grid",
+  "description": "Gradient-glow script hero + intake badge → 4 university logos → recurring 3-item checklist with animated iOS-style toggles switching ON → separate cross-dissolve CTA.",
+  "previewPath": "reference/singapore_b_9x16_findings.md",
+  "previewVideoPath": "reference/singapore nvo masters 27 may - singapore masters nvo 27th may.mp4",
+  "sourceDurationSeconds": 18.39,
+  "accent": "#8b5cf6",
+  "pill": "#1d4ed8",
+  "secondary": "#ffd54a",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": true,
+    "proof": { "mode": "logos", "count": 4, "logoType": "university" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": true, "required": true, "style": "toggle", "count": 3, "defaultHeading": "Check :", "defaultItems": ["Admit Eligibility", "Top Jobs After Graduation", "Expenses & Earnings"] },
+    "productShot": "unsupported",
+    "cta": { "style": "twoLine" }
+  },
+  "defaultHeroLine": "Singapore Masters",
+  "defaultSupportLine": "Admit in 21 Days",
+  "defaultProofLine": "Eligibility and outcomes become clear fast",
+  "defaultCtaLine": "Check your admit eligibility now",
+  "questions": [
+    { "key": "intakeBadge", "prompt": "Intake badge line (e.g. \"2026 Intake — Now Open\")", "default": "2026 Intake — Now Open" },
+    { "key": "logoCount", "prompt": "How many university logos (up to 4)?", "type": "number", "default": 4 },
+    { "key": "useDefaultChecklist", "prompt": "Use the standard 3-item checklist wording (Admit Eligibility / Top Jobs After Graduation / Expenses & Earnings)?", "type": "boolean", "default": true }
+  ]
+}

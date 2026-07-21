@@ -1,0 +1,32 @@
+{
+  "key": "germany_b",
+  "name": "Progressive Build & Fact Pills",
+  "description": "Progressive-build headline → 4 university logos → 3 stacked fact pills → yellow-accent CTA box.",
+  "previewPath": "reference/germany_b_9x16_findings.md",
+  "previewVideoPath": "reference/germany 17 june nvo - g1.mp4",
+  "sourceDurationSeconds": 11.26,
+  "accent": "#e8213d",
+  "pill": "#2a0fe0",
+  "secondary": "#ffd54a",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": false,
+    "proof": { "mode": "logos", "count": 4, "logoType": "university" },
+    "secondaryProof": { "mode": "bullets", "count": 3, "icon": "dot", "itemLabel": "fact" },
+    "checklist": { "supported": false },
+    "productShot": "unsupported",
+    "cta": { "style": "twoLine" }
+  },
+  "defaultHeroLine": "Germany Masters",
+  "defaultSupportLine": "At ₹0 Tuition",
+  "defaultProofLine": "Clear next steps for your application",
+  "defaultCtaLine": "Get your Personalised Germany University Shortlist",
+  "questions": [
+    { "key": "tuitionLine", "prompt": "Tuition/offer pill under the headline (e.g. \"At ₹0 Tuition\")", "default": "At ₹0 Tuition" },
+    { "key": "logoCount", "prompt": "How many university logos (up to 4)?", "type": "number", "default": 4 },
+    { "key": "fact1", "prompt": "Fact pill 1 of 3 (e.g. \"Only €300/semester\")", "default": "" },
+    { "key": "fact2", "prompt": "Fact pill 2 of 3 (e.g. \"For Indian students\")", "default": "" },
+    { "key": "fact3", "prompt": "Fact pill 3 of 3 (e.g. \"No exceptions\")", "default": "" }
+  ]
+}

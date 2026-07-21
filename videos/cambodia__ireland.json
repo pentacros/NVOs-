@@ -1,0 +1,16 @@
+{
+  "version": 3,
+  "format": "ireland",
+  "formatName": "Typewriter & Product Demo",
+  "pillColor": "#1a3fe0",
+  "shots": [
+    { "src": "assets/cambodia/shot1_angkorwat_drone.mp4", "duration": 3.0 },
+    { "src": "assets/cambodia/shot2_angkorwat_sunset.mp4", "duration": 2.0 },
+    { "src": "assets/cambodia/shot3_independence_monument.mp4", "duration": 3.0 }
+  ],
+  "beats": {
+    "hook": { "duration": 3.5, "lead": "Planning Masters in", "hero": "Cambodia", "subtitle": "for 2027" },
+    "productShot": { "src": "assets/cambodia/product_demo.mp4", "duration": 19.29 },
+    "cta": { "duration": 2.5, "lead": "Follow", "accent": "Now" }
+  }
+}

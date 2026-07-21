@@ -1,0 +1,32 @@
+{
+  "key": "genericnvo1",
+  "name": "Numbered Process Steps",
+  "description": "Persistent headline across footage cuts → 4 university logos → 3 numbered process badges (#1/#2/#3) → icon CTA.",
+  "previewPath": "reference/genericnvo1_9x16_findings.md",
+  "previewVideoPath": "reference/nvo 1.mp4",
+  "sourceDurationSeconds": 12.80,
+  "accent": "#00a651",
+  "pill": "#1a3fe0",
+  "secondary": "#ffd54a",
+  "mergeLogosIntoHook": true,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": true,
+    "proof": { "mode": "logos", "count": 4, "logoType": "university" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": true, "required": true, "style": "numbered", "count": 3, "defaultHeading": "", "defaultItems": [] },
+    "productShot": "unsupported",
+    "cta": { "style": "iconPhone" }
+  },
+  "defaultHeroLine": "Masters in",
+  "defaultSupportLine": "Gateway to working across all of Europe",
+  "defaultProofLine": "Shortlisted in minutes",
+  "defaultCtaLine": "Book a free counselling call now",
+  "questions": [
+    { "key": "intakeLine", "prompt": "Intake line under the subtitle (e.g. \"2026 intake\")", "default": "2026 intake" },
+    { "key": "logoCount", "prompt": "How many university logos (up to 4) build into the grid?", "type": "number", "default": 4 },
+    { "key": "step1", "prompt": "Numbered process badge #1 (e.g. \"Filter by Profile, Budget & Country\")", "default": "" },
+    { "key": "step2", "prompt": "Numbered process badge #2", "default": "" },
+    { "key": "step3", "prompt": "Numbered process badge #3", "default": "" }
+  ]
+}

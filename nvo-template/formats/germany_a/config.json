@@ -1,0 +1,35 @@
+{
+  "key": "germany_a",
+  "name": "Employer Proof & USP List",
+  "description": "Script-font hero → 3 employer logos merged into the headline → 4-line USP bullet list → closing script CTA.",
+  "previewPath": "reference/germany_a_9x16_findings.md",
+  "previewVideoPath": "reference/GERMANY NVO - germany_1.mp4",
+  "sourceDurationSeconds": 14.97,
+  "accent": "#ffd54a",
+  "pill": "#1e3fe0",
+  "secondary": "#c6ff3d",
+  "mergeLogosIntoHook": true,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": false,
+    "proof": { "mode": "logos", "count": 3, "logoType": "employer" },
+    "secondaryProof": { "mode": "bullets", "count": 4, "icon": "dot", "itemLabel": "USP" },
+    "checklist": { "supported": false },
+    "productShot": "unsupported",
+    "cta": { "style": "twoLine" }
+  },
+  "defaultHeroLine": "Study in Germany",
+  "defaultSupportLine": "where employers like this hire from",
+  "defaultProofLine": "Trusted programs and strong employer pathways",
+  "defaultCtaLine": "Check eligibility",
+  "questions": [
+    { "key": "employerLine", "prompt": "Employer name-drop subtitle (e.g. \"where BMW, Bosch & Siemens hire from\")", "default": "" },
+    { "key": "employer1", "prompt": "Employer logo 1 of 3", "default": "" },
+    { "key": "employer2", "prompt": "Employer logo 2 of 3", "default": "" },
+    { "key": "employer3", "prompt": "Employer logo 3 of 3", "default": "" },
+    { "key": "usp1", "prompt": "USP bullet 1 of 4 (e.g. \"Engineering capital of Europe\")", "default": "" },
+    { "key": "usp2", "prompt": "USP bullet 2 of 4", "default": "" },
+    { "key": "usp3", "prompt": "USP bullet 3 of 4", "default": "" },
+    { "key": "usp4", "prompt": "USP bullet 4 of 4", "default": "" }
+  ]
+}

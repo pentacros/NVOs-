@@ -1,6 +1,6 @@
 ---
 name: nvo-generator
-description: Generate a Leap Finance "NVO" study-abroad ad video (stock footage + animated copy + logos + CTA) in one aspect ratio, then replicate it to the other two. Use when the user asks to make/create/generate an NVO, a study-abroad ad video, or references this project's country/logo/copy workflow.
+description: Generate a Leap Finance "NVO" study-abroad ad video (stock footage + animated copy + logos + CTA), choose one of nine format/style options, and render it across the three aspect ratios. Use when the user asks to make/create/generate an NVO, a study-abroad ad video, or references this project's country/logo/copy workflow.
 ---
 
 # NVO Generator
@@ -8,6 +8,40 @@ description: Generate a Leap Finance "NVO" study-abroad ad video (stock footage 
 Builds Leap Finance's country-specific study-abroad ad videos ("NVOs"), matching the
 house style reverse-engineered from 9 real campaigns in `../../NVO_STYLE_BIBLE.md`
 (read that file for the full rationale — this skill just operationalizes its decisions).
+This workflow supports nine distinct format/style variants (catalogued in
+`../../scripts/formatCatalog.mjs`, each fully self-contained under
+`../../nvo-template/formats/<key>/`) rather than a single hardcoded template.
+Formats and campaigns are independent axes — any campaign can render through
+any format, and each format/campaign combination gets its own isolated spec,
+assets, and composition output (never shared, see Architecture below).
+
+Each format's `config.json` declares a `contentShape` — its real logo count/type,
+proof-beat mode (`logos` / `bullets` / `numberedBadges` / `cumulativePills`),
+whether it needs the recurring 3-item eligibility checklist, whether a
+product-shot beat is `required` / `optional` / `unsupported`, and its CTA
+entrance style. This is what makes each format's clarifying questions genuinely
+different, not just its color palette — e.g. `dubai_a` asks for 3 checkmark
+bullets *and* 4 university logos (two proof beats), `germany_a` asks for 3
+*employer* logos (not university) plus 4 USP bullets, `singapore_a` asks for
+5 cumulative benefit pills and never asks about logos at all, and `ireland`/
+`newzealand` require a product-shot file path (no logo questions at all —
+their reference cuts only show university/college crests inside the in-app
+demo itself, never a standalone logo grid). Read a format's `config.json`
+before assuming what it should ask for.
+
+The `reference/<format>_9x16_findings.md` files (plus `previewVideoPath` in
+each format's `config.json`, pointing at the real original clip in
+`reference/`) are the **only** source for a format's structure — beat timing,
+shot count, logo count/placement, badge presence, bullet count. **Never** pull
+footage, logos, or copy/CTA wording from `reference/` into a generated spec —
+see the isolation rule below. `genericnvo1`, `ireland`, and `newzealand` have
+no `*_aspect_ratio_comparison.md` file (only 6 of 9 formats do — dubai_a/b,
+germany_a/b, singapore_a/b); for those 3, the 9:16 findings.md plus this
+project's own locked pillarbox-blur rule (§7 decision #7 in the style bible —
+mechanical, identical treatment for every format) is enough to build all 3
+ratios. This has not been re-verified against an actual rendered 1:1/16:9 output
+for those 3 formats specifically — flag to the user if a 1:1/16:9 render of one
+of them looks off, since that gap is real, just judged low-risk.
 
 Rendering backend: [HyperFrames](https://hyperframes.heygen.com) (HTML/CSS/GSAP → MP4).
 Stock footage: Pexels Video API. Footage scoring: Gemini API.
@@ -32,18 +66,19 @@ option below.
 
 For a human running this *without* an agent driving it (or a teammate without
 Claude Code), `npm run create` is a terminal wizard covering the same Phase
-0/3–6 intake in one flow — campaign name, aspect ratio, footage folder, logos,
-copy, one question at a time, writes `videos/<campaign>.json`, shows it for
-confirmation, then runs `compose.mjs` and the render (streaming progress, not
-silent). It detects an existing spec and asks whether to edit or start fresh
-rather than silently overwriting it. After each render it extracts start/mid/end
-frames to a temp folder and prints their paths, but — being a plain Node script —
-it has no way to actually look at them; if an agent happens to be the one
-running it, that agent should still open the frames with its image-reading tool
-and confirm before declaring the video done, same as the chat-native flow. It
-always prints "Please add music after export." as its last line regardless of
-outcome — the pipeline doesn't handle audio yet. Prefer the chat-native flow
-above when you (the agent) are the one driving this.
+0/3–6 intake in one flow — campaign name, aspect ratio, format/style choice,
+footage folder, logos, copy, one question at a time, writes
+`videos/<campaign>.json`, shows it for confirmation, then runs `compose.mjs`
+and the render (streaming progress, not silent). It detects an existing spec
+and asks whether to edit or start fresh rather than silently overwriting it.
+After each render it extracts start/mid/end frames to a temp folder and prints
+their paths, but — being a plain Node script — it has no way to actually look
+at them; if an agent happens to be the one running it, that agent should still
+open the frames with its image-reading tool and confirm before declaring the
+video done, same as the chat-native flow. It always prints "Please add music
+after export." as its last line regardless of outcome — the pipeline doesn't
+handle audio yet. Prefer the chat-native flow above when you (the agent) are
+the one driving this.
 
 ## One-time setup (skip if already done)
 
@@ -125,13 +160,17 @@ above when you (the agent) are the one driving this.
 
   Whichever method works, **you** copy/save the result into
   `nvo-template/assets/<campaign>/` and use that path in the spec.
-- `nvo-template/templates/*.template.html` — source templates with `{{TOKEN}}` placeholders.
-  Never edit `nvo-template/compositions/<campaign>/*.html` directly — those are
+- `nvo-template/templates/*.template.html` — base host templates with `{{TOKEN}}`
+  placeholders for the three aspect-ratio canvases. `nvo-template/formats/<format>/inner.template.html`
+  supplies the per-format overlay shell for the shared inner composition. Never edit
+  `nvo-template/compositions/<campaign>/<format>/*.html` directly — those are
   generated output, overwritten every time `scripts/compose.mjs` runs for that campaign.
-- `scripts/compose.mjs` fills the templates with a per-video JSON spec (see schema
-  below), computing literal numeric `data-start`/`data-duration` offsets — HyperFrames
-  does **not** support variable-templated timing, only content/color (confirmed via
-  `hyperframes lint` and the installed CLI's own `hyperframes docs data-attributes`).
+- `scripts/compose.mjs` fills the selected template(s) with a per-video JSON spec
+  (see schema below), computing literal numeric `data-start`/`data-duration`
+  offsets — HyperFrames does **not** support variable-templated timing, only
+  content/color (confirmed via `hyperframes lint` and the installed CLI's own
+  `hyperframes docs data-attributes`). The chosen format is read from
+  `spec.format` and resolved through `scripts/formatCatalog.mjs`.
 - **Background video/product-shot `<video>` elements must be direct children of each
   aspect-ratio host file's own root** (`canvas-9x16.html`, `canvas-1x1.html`,
   `canvas-16x9.html`) — HyperFrames never drives media placed inside a sub-composition
@@ -185,42 +224,75 @@ above when you (the agent) are the one driving this.
 
 **One question per message.** Ask a single question, wait for the user's reply,
 then ask the next — do not batch multiple questions into one message (this was
-tried and explicitly rejected by the user: batching several fields into one
-turn is the wrong UX here, even though it's the "normal" style for other work
-in this project). This matches how `npm run create` already prompts, field by
-field. Walk through, in order:
+tried and explicitly rejected by the user). This matches how `npm run create`
+already prompts, field by field.
 
-1. **Country / destination** (e.g. "Germany").
-2. **Aspect ratio wanted first** — default to 9:16 (the master); the other 2 are
-   generated automatically in Phase 6 once the user approves the first.
-3. **Proof beat choice** — up to 4 college/university logos, a bullet list of up
-   to 5 USP/stats, or skip this beat entirely. No persistent country/brand logo
-   is ever used (style bible §7 decision #1, reversed after user review — don't
-   ask for one). If logos: the easiest path is to have them just paste or copy
-   each image and grab it off the clipboard yourself (see Architecture note
-   above for the exact command and the "always verify what you grabbed" caveat)
-   — fall back to asking where the file already lives (Desktop, Downloads, the
-   project's `inbox/` folder, wherever) if that fails. Never ask the user to
-   place it inside `nvo-template/assets/...` themselves, copy it there
-   yourself. Logos render centered, directly under the still-visible hook card
-   (style bible §7 decisions #1–#3), not their own separate frame.
-4. **Hook lead line** (e.g. "Study in").
-5. **Hook hero word** (the country/degree name, e.g. "Germany").
-6. **Hook fast-fact subtitle** (optional — ask if they want one, blank to skip).
-7. **Checklist opt-in** — the recurring 3-item "Admit Eligibility / Top Jobs
-   After Graduation / Expenses & Earnings" block, rendered as real bullet
-   points (style bible §7 decision #10, still open — treat as opt-in, not
-   automatic default). If yes, ask separately whether to keep the default
-   wording or customize it. When paired with a CTA and no product shot, the
-   CTA renders centered directly beneath it in the same frame (style bible §7
-   decision #4).
-8. **Product shot opt-in** — only if they have an app screen-recording (not a
-   static photo — style bible found this is always a screen recording, never a
-   device mockup). If yes, ask for the file path as its own follow-up.
-9. **CTA lead text** (e.g. "Check").
-10. **CTA accent phrase** (e.g. "Eligibility"). Always renders centered.
-11. **Pill/accent color**, only if they want something other than the default
-    blue (`#1E3FE0`) — otherwise skip this question and just use the default.
+**Format is chosen first, before any content question, and its own schema
+governs everything after that — never fall back to a shared generic question
+set once a format is picked.** Walk through, in order:
+
+1. **Present all 9 formats as a real menu**: for each, show its one-line
+   `description` from `config.json` (not just its key/name). Let the user open
+   the real original reference video for any format they're curious about
+   (`config.json`'s `previewVideoPath`, e.g.
+   `reference/dubai nvo 20th may - DUBAI NVO VISUALS CORRECTED 9 BY 16.mp4`)
+   and read its `reference/<format>_9x16_findings.md` breakdown as text
+   context — this is the genuine original example of that format, not a
+   placeholder. `scripts/formatCatalog.mjs`'s `previewTextForFormat()` prints
+   the findings.md excerpt plus a pointer to the video path; open the video
+   file yourself if the user wants to actually watch it.
+2. **Format/style choice** — once picked, say something like *"Got it —
+   building a [format display name] style NVO"*, then load ONLY that format's
+   `contentShape` + `questions` from its `config.json` for everything below.
+   Two formats with the same accent color can still ask completely different
+   questions (e.g. `germany_a` asks for employer logos, `germany_b` asks for
+   university logos — same country, different format, different content shape).
+3. **Shared questions next** (same for every format): campaign/country name,
+   aspect ratio (default 9:16 — the master; the other 2 are generated
+   automatically in Phase 6), footage folder **for this new campaign**
+   (`nvo-template/assets/<campaign>/` or wherever the fresh clips live — never
+   `reference/`).
+4. **Then that format's own questions, from its `contentShape`** — ask only
+   what that shape actually needs, always for fresh content, never suggesting
+   or defaulting to anything drawn from `reference/`:
+   - **Hook**: lead line, hero word (country/degree name), and — only if
+     `contentShape.hasIntakeBadge` is true — an intake-badge/tag line; otherwise
+     an optional subtitle.
+   - **Proof beat** (`contentShape.proof.mode`): exactly `count` items in
+     whichever shape that format uses — `logos` (ask for `logoType`-labeled
+     logos, e.g. "employer" vs "university" — fetch/copy per the Architecture
+     section, never substitute a logo seen in that format's reference video),
+     `bullets` (checkmark-style benefit lines), `numberedBadges` (#1/#2/#3
+     process steps), or `cumulativePills` (a stacking benefit list that all
+     stays on screen together, first item in the accent color). Some formats
+     have no proof beat at all (`ireland`, `newzealand`, `singapore_a` has one
+     but no logos).
+   - **Secondary proof beat** (`contentShape.secondaryProof`), only for formats
+     that show two distinct proof beats back to back (e.g. `dubai_a`: 3 bullets
+     then 4 university logos; `germany_a`/`germany_b`: logos then bullets) —
+     same per-mode question shapes as above.
+   - **Checklist** (`contentShape.checklist.supported`) — only asked for
+     `dubai_b`, `genericnvo1`, and `singapore_b`. If the format's
+     `defaultItems` recurring wording ("Admit Eligibility / Top Jobs After
+     Graduation / Expenses & Earnings") applies, ask whether to keep it or
+     customize.
+   - **Product shot** (`contentShape.productShot`) — `required` for `ireland`
+     and `newzealand` (always ask for the file path, no opt-out — `compose.mjs`
+     will hard-error if it's missing for these two); `unsupported` for every
+     other format (don't ask at all); no format currently marks it merely
+     `optional`. Always this campaign's own screen recording, never a device
+     mockup, never pulled from a reference clip.
+   - **CTA**: lead text + accent phrase, always centered. `contentShape.cta.style`
+     picks the entrance animation (`compose.mjs` handles this automatically from
+     the format — no extra question needed unless the user wants a non-default
+     pill color).
+5. **Pill/accent color**, only if they want something other than the format's
+   own default — otherwise skip this question and just use the format's
+   `pill`/`accent` from `config.json`.
+
+Re-running for a campaign+format combination that already has a spec at
+`videos/<campaign>__<format>.json` asks whether to edit or start fresh (both
+`npm run create` and the chat-native flow should do this — see Phase 3).
 
 ## Phase 1 — Source stock footage
 
@@ -246,18 +318,23 @@ pass the full clip and let `compose.mjs`'s padding logic handle the exact durati
 
 ## Phase 3 — Compose
 
-Write a JSON spec (see full schema in `videos/germany.json` for a working example,
-with real trimmed shots and real logos — `videos/test_germany.json` is a minimal
-placeholder-only version) to `videos/<name>.json`, where `<name>` becomes the
-campaign slug that scopes everything below:
+Write a JSON spec (see `videos/germany.json` for a working pre-rebuild example;
+`scripts/create.mjs` writes the current per-format schema described here when
+run interactively) to `videos/<name>__<format>.json`, where `<name>` is the
+campaign slug and `<format>` is the format key — this filename pairing is what
+scopes everything below and what "edit or start fresh" checks against:
 
 ```json
 {
-  "pillColor": "#1E3FE0",
+  "version": 3,
+  "format": "germany_b",
+  "formatName": "Progressive Build & Fact Pills",
+  "pillColor": "#2a0fe0",
   "shots": [ { "src": "assets/germany/shot1.mp4", "duration": 3.8 }, ... ],
   "beats": {
     "hook": { "duration": 2.5, "lead": "Study in", "hero": "Germany", "subtitle": "..." },
     "proof": { "mode": "logos", "duration": 3.5, "logos": ["assets/germany/uni1.png", ...] },
+    "secondaryProof": { "mode": "bullets", "duration": 3, "bullets": ["fact 1", "fact 2", "fact 3"] },
     "checklist": { "duration": 3, "heading": "Get:", "items": ["...", "...", "..."] },
     "productShot": { "duration": 4, "src": "assets/germany/product.mp4" },
     "cta": { "duration": 2, "lead": "Check", "accent": "Eligibility" }
@@ -268,28 +345,36 @@ campaign slug that scopes everything below:
 Every `src`/`logos` path lives under that same `assets/<name>/` folder — shots and
 logos side by side, never a shared cross-campaign folder (see Architecture note
 above). No `logo` field — there's no persistent country/brand logo (style bible §7
-decision #1, reversed). Omit `proof`, `checklist`, or `productShot` entirely for
-videos that don't use them — `compose.mjs` only renders beats present in the spec
-(dynamic beat model, style bible §7 decision #9). `proof.mode` is `"logos"` or
-`"bullets"` (with a `bullets` array instead of `logos`); a `"logos"` proof right
-after a hook automatically merges into the hook's on-screen block (see Architecture
-section above).
+decision #1, reversed). Omit `proof`, `secondaryProof`, `checklist`, or
+`productShot` entirely for videos that don't use them — `compose.mjs` only
+renders beats present in the spec (dynamic beat model, style bible §7 decision
+#9), **except** `productShot` for `ireland`/`newzealand`, which `compose.mjs`
+hard-errors on if missing (their `contentShape.productShot` is `"required"`) and
+also hard-errors if present for a format whose `contentShape.productShot` is
+`"unsupported"`. `proof`/`secondaryProof` beat `mode` is one of `"logos"`
+(`logos` array), `"bullets"` (`bullets` array), `"numberedBadges"` (`items`
+array, renders with a "#1/#2/#3" prefix), or `"cumulativePills"` (`items` array,
+first item renders in the format's accent color, rest in its pill color — used
+by `singapore_a`). A `"logos"` `proof` right after a hook automatically merges
+into the hook's on-screen block when the format's `mergeLogosIntoHook` is true
+(see Architecture section above); `secondaryProof` never merges into the hook.
 
 ```bash
-node scripts/compose.mjs --spec videos/<name>.json
+node scripts/compose.mjs --spec videos/<name>__<format>.json
 ```
 
-This writes `nvo-template/compositions/<name>/inner.html` and all 3
-`nvo-template/compositions/<name>/canvas-*.html` hosts — the campaign slug is taken
-from the spec's own filename, so this never touches another campaign's already-
-composed output. Re-run it any time the spec changes — never hand-edit the
-generated composition files.
+This writes `nvo-template/compositions/<name>/<format>/inner.html` and all 3
+`nvo-template/compositions/<name>/<format>/canvas-*.html` hosts — the campaign
+slug is taken from the spec's own filename, and the format is taken from
+`spec.format`, so this never touches another campaign's already-composed output
+or another format variant of the same campaign. Re-run it any time the spec
+changes — never hand-edit the generated composition files.
 
 ## Phase 4 — Render the first aspect ratio
 
 ```bash
 cd nvo-template
-npx hyperframes render -c compositions/<name>/canvas-9x16.html -o ../output/<name>_9x16.mp4
+npx hyperframes render -c compositions/<name>/<format>/canvas-9x16.html -o ../output/<name>_<format>_9x16.mp4
 ```
 
 (Prefix with the Node 22+ PATH export from setup if needed. Drop `-q draft --fps 10`
@@ -312,8 +397,8 @@ Once the user approves the first ratio, the other 2 are already composed (Phase 
 generates all 3 hosts every time) — just render them:
 
 ```bash
-npx hyperframes render -c compositions/<name>/canvas-1x1.html -o ../output/<name>_1x1.mp4
-npx hyperframes render -c compositions/<name>/canvas-16x9.html -o ../output/<name>_16x9.mp4
+npx hyperframes render -c compositions/<name>/<format>/canvas-1x1.html -o ../output/<name>_<format>_1x1.mp4
+npx hyperframes render -c compositions/<name>/<format>/canvas-16x9.html -o ../output/<name>_<format>_16x9.mp4
 ```
 
 No further per-ratio design work is needed — the pillarbox-blur treatment is

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <!-- 9:16 host — the master aspect ratio: native background + the shared overlay
+       mounted at native scale, no pillarbox/blur. Filled by scripts/compose.mjs.
+       Render with: npx hyperframes render -c compositions/canvas-9x16.html -o output/<name>_9x16.mp4 -->
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #bg-layer { position: absolute; inset: 0; z-index: 0; }
+      #bg-layer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      #overlay-embed { position: absolute; inset: 0; z-index: 1; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="root-9x16" data-start="0" data-width="1080" data-height="1920">
+      <div id="bg-layer">
+        <video id="shot1" class="clip" data-start="0" data-duration="3" data-track-index="0" src="assets/australia/shot1_opera_house.mp4" muted></video>
+        <video id="shot2" class="clip" data-start="3" data-duration="3" data-track-index="0" src="assets/australia/shot2_harbour_bridge.mp4" muted></video>
+        <video id="shot3" class="clip" data-start="6" data-duration="3" data-track-index="0" src="assets/australia/shot3_melbourne_skyline.mp4" muted></video>
+        <video id="shot4" class="clip" data-start="9" data-duration="3" data-track-index="0" src="assets/australia/shot4_street_tram.mp4" muted></video>
+        <video id="shot5" class="clip" data-start="12" data-duration="3" data-track-index="0" src="assets/australia/shot5_campus.mp4" muted></video>
+        
+      </div>
+      <div id="overlay-embed" data-composition-id="inner-embed" data-composition-src="compositions/australia/inner.html" data-start="0" data-duration="15"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.set({}, {}, 15);
+      window.__timelines["root-9x16"] = tl;
+    </script>
+  </body>
+</html>

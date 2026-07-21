@@ -1,0 +1,30 @@
+{
+  "key": "dubai_b",
+  "name": "Logo-Merged Headline & Checklist",
+  "description": "Intake badge → 4 university logos merged into the headline → recurring 3-item eligibility checklist fused with the CTA.",
+  "previewPath": "reference/dubai_b_9x16_findings.md",
+  "previewVideoPath": "reference/dubai nvo masters 19th may - DUBAI NVO 19th may premium 9 by 16.mp4",
+  "sourceDurationSeconds": 13.76,
+  "accent": "#39ff14",
+  "pill": "#1e3fe0",
+  "secondary": "#ffd54a",
+  "mergeLogosIntoHook": true,
+  "mergeCtaIntoChecklist": true,
+  "contentShape": {
+    "hasIntakeBadge": true,
+    "proof": { "mode": "logos", "count": 4, "logoType": "university" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": true, "required": true, "style": "check", "count": 3, "defaultHeading": "Get :", "defaultItems": ["Admit Eligibility", "Top Jobs After Graduation", "Expenses & Earnings"] },
+    "productShot": "unsupported",
+    "cta": { "style": "twoLine" }
+  },
+  "defaultHeroLine": "Masters in Dubai",
+  "defaultSupportLine": "A fast path to a shortlist",
+  "defaultProofLine": "University proof without the guesswork",
+  "defaultCtaLine": "Check your admit eligibility now",
+  "questions": [
+    { "key": "intakeBadge", "prompt": "Intake badge text (e.g. \"2026 Intake — Now Open\")", "default": "2026 Intake — Now Open" },
+    { "key": "logoCount", "prompt": "How many university logos (up to 4) merge into the headline?", "type": "number", "default": 4 },
+    { "key": "useDefaultChecklist", "prompt": "Use the standard 3-item checklist wording (Admit Eligibility / Top Jobs After Graduation / Expenses & Earnings)?", "type": "boolean", "default": true }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "key": "ireland",
+  "name": "Typewriter & Product Demo",
+  "description": "Typewriter headline with 2 pill-highlighted words → a REQUIRED full-screen product/app-screen demo (~27% of runtime) → blur-pop final CTA. No logo grid — university crests only appear inside the product demo itself.",
+  "previewPath": "reference/ireland_9x16_findings.md",
+  "previewVideoPath": "reference/ireland nvo  18th may - Ireland shortlist 9 by 16.mp4",
+  "sourceDurationSeconds": 11.22,
+  "accent": "#2fae57",
+  "pill": "#1a3fe0",
+  "secondary": "#c81f4a",
+  "mergeLogosIntoHook": false,
+  "mergeCtaIntoChecklist": false,
+  "contentShape": {
+    "hasIntakeBadge": false,
+    "proof": { "mode": "none" },
+    "secondaryProof": { "mode": "none" },
+    "checklist": { "supported": false },
+    "productShot": "required",
+    "cta": { "style": "blurPop", "highlightWords": true }
+  },
+  "defaultHeroLine": "Planning Masters in",
+  "defaultSupportLine": "for 2026?",
+  "defaultProofLine": "Fast, confident shortlist building",
+  "defaultCtaLine": "Get your shortlist now",
+  "questions": [
+    { "key": "highlightWord1", "prompt": "First highlighted pill word in the mid-copy line (green pill, e.g. \"SHORTLIST\")", "default": "SHORTLIST" },
+    { "key": "highlightWord2", "prompt": "Second highlighted pill word (red pill, e.g. \"60\")", "default": "60" },
+    { "key": "productShotPath", "prompt": "Path to this campaign's own app screen-recording (REQUIRED for this format — never a reference clip)", "default": "" }
+  ]
+}
